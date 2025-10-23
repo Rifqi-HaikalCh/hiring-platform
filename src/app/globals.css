@@ -24,3 +24,138 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* React Select Custom Styles */
+.react-select-container .react-select__control {
+  @apply flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm;
+  @apply focus-within:outline-none focus-within:ring-2 focus-within:ring-teal-600 focus-within:border-transparent;
+  min-height: 40px;
+  box-shadow: none;
+}
+
+.react-select-container .react-select__control:hover {
+  border-color: #d1d5db;
+}
+
+.react-select-container .react-select__control--is-focused {
+  @apply border-transparent ring-2 ring-teal-600;
+  box-shadow: none;
+}
+
+.react-select-container .react-select__value-container {
+  padding: 0;
+}
+
+.react-select-container .react-select__input-container {
+  margin: 0;
+  padding: 0;
+}
+
+.react-select-container .react-select__placeholder {
+  @apply text-gray-500;
+}
+
+.react-select-container .react-select__single-value {
+  @apply text-gray-900;
+  margin: 0;
+}
+
+.react-select-container .react-select__indicator-separator {
+  display: none;
+}
+
+.react-select-container .react-select__dropdown-indicator {
+  @apply text-gray-400;
+  padding: 0 8px;
+}
+
+.react-select-container .react-select__menu {
+  @apply rounded-lg border border-gray-200 shadow-lg;
+  margin-top: 4px;
+}
+
+.react-select-container .react-select__menu-list {
+  @apply rounded-lg;
+  padding: 4px;
+}
+
+.react-select-container .react-select__option {
+  @apply rounded-md text-gray-900 px-3 py-2 text-sm;
+  background-color: transparent;
+}
+
+.react-select-container .react-select__option:hover {
+  @apply bg-gray-100;
+}
+
+.react-select-container .react-select__option--is-focused {
+  @apply bg-gray-100;
+}
+
+.react-select-container .react-select__option--is-selected {
+  @apply bg-teal-600 text-white;
+}
+
+.react-select-container .react-select__option--is-selected:hover {
+  @apply bg-teal-700;
+}
+
+/* React Datepicker Custom Styles */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container input {
+  @apply flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm;
+  @apply focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent;
+  @apply placeholder:text-gray-500;
+}
+
+.react-datepicker {
+  @apply rounded-lg border border-gray-200 shadow-lg;
+  font-family: inherit;
+}
+
+.react-datepicker__header {
+  @apply bg-gray-50 rounded-t-lg border-b border-gray-200;
+}
+
+.react-datepicker__current-month {
+  @apply text-gray-900 font-semibold;
+}
+
+.react-datepicker__day-name {
+  @apply text-gray-600 text-sm font-medium;
+}
+
+.react-datepicker__day {
+  @apply text-gray-900 hover:bg-gray-100 rounded;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-teal-600 text-white;
+}
+
+.react-datepicker__day--selected:hover {
+  @apply bg-teal-700;
+}
+
+.react-datepicker__day--keyboard-selected {
+  @apply bg-teal-100 text-teal-900;
+}
+
+.react-datepicker__day--today {
+  @apply bg-gray-100 text-gray-900 font-semibold;
+}
+
+.react-datepicker__navigation {
+  top: 13px;
+}
+
+.react-datepicker__navigation--previous {
+  left: 6px;
+}
+
+.react-datepicker__navigation--next {
+  right: 6px;
+}
