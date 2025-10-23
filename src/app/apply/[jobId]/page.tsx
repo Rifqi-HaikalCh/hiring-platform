@@ -185,8 +185,11 @@ export default function ApplyJobPage() {
   }
 
   const handleGestureCapture = useCallback((imageBase64: string) => {
-    setCapturedImage(imageBase64)
-    setValue('photo_profile', imageBase64)
+    // Use setTimeout to prevent state update during render
+    setTimeout(() => {
+      setCapturedImage(imageBase64)
+      setValue('photo_profile', imageBase64)
+    }, 0)
   }, [setValue])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -629,9 +632,8 @@ export default function ApplyJobPage() {
                     }}
                     render={({ field }) => (
                       <DatePicker
-                        {...field}
                         selected={field.value}
-                        onChange={(date) => field.onChange(date)}
+                        onChange={(date: Date | null) => field.onChange(date)}
                         dateFormat="dd/MM/yyyy"
                         placeholderText="Select date of birth"
                         showYearDropdown

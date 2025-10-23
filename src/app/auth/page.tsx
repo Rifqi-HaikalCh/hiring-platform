@@ -25,11 +25,11 @@ export default function AuthPage() {
       const { data: result, error } = await handleSignIn(data)
 
       if (error) {
-        toast.error(error.message || 'Login failed')
+        toast.error((error as any)?.message || 'Login failed')
         return
       }
 
-      if (result.user) {
+      if (result?.user) {
         const userRole = result.user.user_metadata?.role
         toast.success('Login successful!')
 

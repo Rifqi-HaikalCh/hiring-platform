@@ -37,6 +37,7 @@ export async function getJobs() {
       .order('created_at', { ascending: false })
 
     if (error) {
+      console.error('Get jobs error:', error)
       throw error
     }
 
@@ -56,6 +57,7 @@ export async function getJobById(id: string) {
       .single()
 
     if (error) {
+      console.error('Get job by ID error:', error)
       throw error
     }
 
@@ -129,5 +131,63 @@ export async function getUserApplications(userId: string) {
   } catch (error) {
     console.error('Get applications error:', error)
     return { data: null, error }
+  }
+}
+
+export async function updateJob(jobId: string, updates: Partial<Job>) {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(updates)
+      .eq('id', jobId)
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return { data: data as Job, error: null }
+  } catch (error) {
+    console.error('Update job error:', error)
+    return { data: null, error }
+  }
+}
+
+export async function updateJobStatus(jobId: string, newStatus: 'active' | 'inactive' | 'draft') {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .update({ status: newStatus })
+      .eq('id', jobId)
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return { data: data as Job, error: null }
+  } catch (error) {
+    console.error('Update job status error:', error)
+    return { data: null, error }
+  }
+}
+
+export async function deleteJob(jobId: string) {
+  try {
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', jobId)
+
+    if (error) {
+      throw error
+    }
+
+    return { error: null }
+  } catch (error) {
+    console.error('Delete job error:', error)
+    return { error }
   }
 }

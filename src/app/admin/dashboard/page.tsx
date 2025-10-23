@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -8,7 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { JobCardAdmin } from '@/components/admin/JobCardAdmin'
 import { CreateJobModal } from '@/components/modals/CreateJobModal'
-import { getJobs, type Job } from '@/lib/supabase/jobs'
+import { getJobs, updateJobStatus, deleteJob, type Job } from '@/lib/supabase/jobs'
 import { toast } from 'react-hot-toast'
 
 // Transform job data for admin display
@@ -28,6 +29,7 @@ const transformJobForAdmin = (job: any) => ({
 })
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'recent'>('all')
   const [jobs, setJobs] = useState<Job[]>([])
@@ -59,7 +61,57 @@ export default function AdminDashboard() {
   }
 
   const handleJobManage = (jobId: string) => {
-    toast.success(`Managing job ${jobId}`)
+    router.push(`/admin/jobs/${jobId}/manage`)
+  }
+
+  const handleJobEdit = (job: Job) => {
+    // You can implement edit modal here later
+    toast.info('Edit job functionality coming soon')
+  }
+
+  const handleJobToggleStatus = async (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId)
+    if (!job) return
+
+    const newStatus = job.status === 'active' ? 'inactive' : 'active'
+
+    try {
+      const { data, error } = await updateJobStatus(jobId, newStatus)
+      if (error) {
+        toast.error('Failed to update job status')
+        return
+      }
+
+      // Update local state
+      setJobs(prevJobs =>
+        prevJobs.map(j =>
+          j.id === jobId ? { ...j, status: newStatus } : j
+        )
+      )
+
+      toast.success(`Job ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
+    } catch (error) {
+      toast.error('An error occurred while updating job status')
+    }
+  }
+
+  const handleJobDelete = async (jobId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this job? This action cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      const { error } = await deleteJob(jobId)
+      if (error) {
+        toast.error('Failed to delete job')
+        return
+      }
+
+      // Remove from local state
+      setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId))
+      toast.success('Job deleted successfully')
+    } catch (error) {
+      toast.error('An error occurred while deleting the job')
+    }
   }
 
   const handleCreateJob = () => {
@@ -135,6 +187,9 @@ export default function AdminDashboard() {
                   key={job.id}
                   job={job}
                   onManage={handleJobManage}
+                  onEdit={handleJobEdit}
+                  onToggleStatus={handleJobToggleStatus}
+                  onDelete={handleJobDelete}
                 />
               ))
             ) : (

@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
-    "@mediapipe/hands": "^0.4.1675469240",
     "@supabase/supabase-js": "^2.76.1",
     "@tanstack/react-table": "^8.21.3",
-    "@tensorflow-models/hand-pose-detection": "^2.0.1",
+    "@tensorflow-models/handpose": "^0.1.0",
     "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "clsx": "^2.1.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.546.0",
