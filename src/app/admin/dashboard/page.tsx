@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Briefcase, TrendingUp, Clock } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -11,8 +11,8 @@ import { JobCardAdmin } from '@/components/admin/JobCardAdmin'
 import { CreateJobModal } from '@/components/modals/CreateJobModal'
 import { getJobs, updateJobStatus, deleteJob, type Job } from '@/lib/supabase/jobs'
 import { toast } from 'react-hot-toast'
+import { gsap } from 'gsap'
 
-// Transform job data for admin display
 const transformJobForAdmin = (job: any) => ({
   id: job.id,
   title: job.job_title || job.title,
@@ -27,6 +27,220 @@ const transformJobForAdmin = (job: any) => ({
     max: job.max_salary || job.salary_max
   }
 })
+
+// Create Job Card dengan Magic Bento Effects
+function CreateJobCard({ onClick }: { onClick: () => void }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const particlesRef = useRef<HTMLDivElement[]>([])
+  const isHoveredRef = useRef(false)
+
+  useEffect(() => {
+    if (!cardRef.current) return
+
+    const card = cardRef.current
+
+    const handleMouseEnter = () => {
+      isHoveredRef.current = true
+
+      // Create particles
+      for (let i = 0; i < 12; i++) {
+        setTimeout(() => {
+          if (!isHoveredRef.current || !cardRef.current) return
+
+          const particle = document.createElement('div')
+          particle.className = 'absolute w-1 h-1 rounded-full pointer-events-none'
+          particle.style.cssText = `
+            background: rgba(20, 184, 166, 0.8);
+            box-shadow: 0 0 8px rgba(20, 184, 166, 0.6);
+            left: ${Math.random() * 100}%;
+            top: ${Math.random() * 100}%;
+            z-index: 10;
+          `
+
+          cardRef.current!.appendChild(particle)
+          particlesRef.current.push(particle)
+
+          gsap.fromTo(particle,
+            { scale: 0, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' }
+          )
+
+          gsap.to(particle, {
+            x: (Math.random() - 0.5) * 100,
+            y: (Math.random() - 0.5) * 100,
+            rotation: Math.random() * 360,
+            duration: 2 + Math.random() * 2,
+            ease: 'none',
+            repeat: -1,
+            yoyo: true
+          })
+
+          gsap.to(particle, {
+            opacity: 0.4,
+            duration: 1.5,
+            ease: 'power2.inOut',
+            repeat: -1,
+            yoyo: true
+          })
+        }, i * 80)
+      }
+    }
+
+    const handleMouseLeave = () => {
+      isHoveredRef.current = false
+
+      particlesRef.current.forEach(particle => {
+        gsap.to(particle, {
+          scale: 0,
+          opacity: 0,
+          duration: 0.3,
+          ease: 'back.in(1.7)',
+          onComplete: () => particle.remove()
+        })
+      })
+      particlesRef.current = []
+
+      gsap.to(card, {
+        rotateX: 0,
+        rotateY: 0,
+        x: 0,
+        y: 0,
+        duration: 0.3,
+        ease: 'power2.out'
+      })
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = card.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      const centerX = rect.width / 2
+      const centerY = rect.height / 2
+
+      // Tilt effect
+      const rotateX = ((y - centerY) / centerY) * -10
+      const rotateY = ((x - centerX) / centerX) * 10
+
+      gsap.to(card, {
+        rotateX,
+        rotateY,
+        transformPerspective: 1000,
+        duration: 0.1,
+        ease: 'power2.out'
+      })
+
+      // Magnetism
+      const magnetX = (x - centerX) * 0.05
+      const magnetY = (y - centerY) * 0.05
+
+      gsap.to(card, {
+        x: magnetX,
+        y: magnetY,
+        duration: 0.3,
+        ease: 'power2.out'
+      })
+
+      // Border glow
+      const relativeX = (x / rect.width) * 100
+      const relativeY = (y / rect.height) * 100
+      card.style.setProperty('--glow-x', `${relativeX}%`)
+      card.style.setProperty('--glow-y', `${relativeY}%`)
+    }
+
+    const handleClick = (e: MouseEvent) => {
+      const rect = card.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      const maxDistance = Math.max(
+        Math.hypot(x, y),
+        Math.hypot(x - rect.width, y),
+        Math.hypot(x, y - rect.height),
+        Math.hypot(x - rect.width, y - rect.height)
+      )
+
+      const ripple = document.createElement('div')
+      ripple.className = 'absolute rounded-full pointer-events-none'
+      ripple.style.cssText = `
+        width: ${maxDistance * 2}px;
+        height: ${maxDistance * 2}px;
+        background: radial-gradient(circle, rgba(20, 184, 166, 0.4) 0%, rgba(20, 184, 166, 0.2) 30%, transparent 70%);
+        left: ${x - maxDistance}px;
+        top: ${y - maxDistance}px;
+        z-index: 1000;
+      `
+
+      card.appendChild(ripple)
+
+      gsap.fromTo(ripple,
+        { scale: 0, opacity: 1 },
+        {
+          scale: 1,
+          opacity: 0,
+          duration: 0.8,
+          ease: 'power2.out',
+          onComplete: () => ripple.remove()
+        }
+      )
+    }
+
+    card.addEventListener('mouseenter', handleMouseEnter)
+    card.addEventListener('mouseleave', handleMouseLeave)
+    card.addEventListener('mousemove', handleMouseMove)
+    card.addEventListener('click', handleClick)
+
+    return () => {
+      card.removeEventListener('mouseenter', handleMouseEnter)
+      card.removeEventListener('mouseleave', handleMouseLeave)
+      card.removeEventListener('mousemove', handleMouseMove)
+      card.removeEventListener('click', handleClick)
+    }
+  }, [])
+
+  return (
+    <div ref={cardRef} className="relative magic-bento-card" style={{
+      '--glow-x': '50%',
+      '--glow-y': '50%'
+    } as React.CSSProperties}>
+      <Card className="relative bg-gradient-to-br from-gray-800 to-gray-900 text-white p-6 overflow-hidden border border-gray-700 hover:border-teal-400 cursor-pointer transition-all">
+        {/* Border glow effect */}
+        <div className="absolute inset-0 rounded-lg pointer-events-none"
+          style={{
+            background: `radial-gradient(400px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.2), transparent 60%)`,
+            opacity: 0
+          }}
+          className="border-glow-effect"
+        />
+
+        <div className="relative z-10">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold mb-2">Recruit the best candidates</h2>
+            <p className="text-gray-300 text-sm">
+              Create jobs, invite, and hire with ease
+            </p>
+          </div>
+
+          <Button
+            onClick={onClick}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white transition-all duration-300 hover:scale-105"
+            size="lg"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Create a new job
+          </Button>
+        </div>
+      </Card>
+
+      <style jsx>{`
+        .magic-bento-card:hover .border-glow-effect {
+          opacity: 1 !important;
+          transition: opacity 0.3s ease;
+        }
+      `}</style>
+    </div>
+  )
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -65,7 +279,6 @@ export default function AdminDashboard() {
   }
 
   const handleJobEdit = (job: Job) => {
-    // You can implement edit modal here later
     toast.info('Edit job functionality coming soon')
   }
 
@@ -82,7 +295,6 @@ export default function AdminDashboard() {
         return
       }
 
-      // Update local state
       setJobs(prevJobs =>
         prevJobs.map(j =>
           j.id === jobId ? { ...j, status: newStatus } : j
@@ -106,7 +318,6 @@ export default function AdminDashboard() {
         return
       }
 
-      // Remove from local state
       setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId))
       toast.success('Job deleted successfully')
     } catch (error) {
@@ -119,7 +330,7 @@ export default function AdminDashboard() {
   }
 
   const handleJobCreated = () => {
-    loadJobs() // Refresh the job list
+    loadJobs()
   }
 
   const transformedJobs = jobs.map(transformJobForAdmin)
@@ -141,7 +352,7 @@ export default function AdminDashboard() {
   })
 
   return (
-    <div className="px-6">
+    <div className="px-4 sm:px-6 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2">
@@ -149,14 +360,14 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Job List</h1>
 
             {/* Search Bar */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <div className="relative mb-4 group">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 transition-colors group-focus-within:text-teal-600" />
               <Input
                 type="text"
                 placeholder="Search by job details"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 transition-all duration-300 focus:border-teal-500 focus:ring-teal-500"
               />
             </div>
 
@@ -166,60 +377,54 @@ export default function AdminDashboard() {
                 variant={activeFilter === 'active' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setActiveFilter(activeFilter === 'active' ? 'all' : 'active')}
+                className="transition-all duration-300 hover:scale-105"
               >
+                <TrendingUp className="h-4 w-4 mr-1" />
                 Active
               </Button>
               <Button
                 variant={activeFilter === 'recent' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setActiveFilter(activeFilter === 'recent' ? 'all' : 'recent')}
+                className="transition-all duration-300 hover:scale-105"
               >
-                started on 1 Oct 2025
+                <Clock className="h-4 w-4 mr-1" />
+                Recent
               </Button>
             </div>
           </div>
 
           {/* Job List */}
-          <div className="space-y-4">
-            {filteredJobs.length > 0 ? (
-              filteredJobs.map((job) => (
-                <JobCardAdmin
-                  key={job.id}
-                  job={job}
-                  onManage={handleJobManage}
-                  onEdit={handleJobEdit}
-                  onToggleStatus={handleJobToggleStatus}
-                  onDelete={handleJobDelete}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredJobs.length > 0 ? (
+                filteredJobs.map((job) => (
+                  <JobCardAdmin
+                    key={job.id}
+                    job={job}
+                    onManage={handleJobManage}
+                    onEdit={handleJobEdit}
+                    onToggleStatus={handleJobToggleStatus}
+                    onDelete={handleJobDelete}
+                  />
+                ))
+              ) : (
+                <EmptyState
+                  title="No jobs found"
+                  description="No jobs match your current filters."
                 />
-              ))
-            ) : (
-              <EmptyState
-                title="No jobs found"
-                description="No jobs match your current filters."
-              />
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <Card className="bg-gradient-to-br from-gray-800 to-gray-900 text-white p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2">Recruit the best candidates</h2>
-              <p className="text-gray-300 text-sm">
-                Create jobs, invite, and hire with ease
-              </p>
-            </div>
-
-            <Button
-              onClick={handleCreateJob}
-              className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-              size="lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Create a new job
-            </Button>
-          </Card>
+          <CreateJobCard onClick={handleCreateJob} />
 
           {/* Additional stats card */}
           <Card className="mt-6 p-6">

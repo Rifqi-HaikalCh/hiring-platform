@@ -82,7 +82,7 @@ export function SimpleWebcamModal({ isOpen, onClose, onCapture }: SimpleWebcamMo
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white/70 backdrop-blur-xl border border-white/20 p-6 text-left align-middle shadow-2xl shadow-black/10 transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title className="text-lg font-medium leading-6 text-gray-900">
                     Take Profile Photo

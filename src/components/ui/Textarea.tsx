@@ -1,17 +1,17 @@
 'use client'
 
-import { InputHTMLAttributes, forwardRef, useEffect, useRef } from 'react'
+import { TextareaHTMLAttributes, forwardRef, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap'
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean
   disableMagic?: boolean
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = 'text', error, disableMagic = false, ...props }, ref) => {
-    const internalRef = useRef<HTMLInputElement>(null)
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ className, error, disableMagic = false, ...props }, ref) => {
+    const internalRef = useRef<HTMLTextAreaElement>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
     const particlesRef = useRef<HTMLDivElement[]>([])
     const isFocusedRef = useRef(false)
@@ -19,9 +19,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     useEffect(() => {
       if (disableMagic || props.disabled) return
 
-      const input = internalRef.current
+      const textarea = internalRef.current
       const wrapper = wrapperRef.current
-      if (!input || !wrapper) return
+      if (!textarea || !wrapper) return
 
       const glowColor = error ? '239, 68, 68' : '20, 184, 166' // red for error, teal for normal
 
@@ -36,7 +36,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         })
 
         // Create subtle particles on focus
-        const particleCount = 3
+        const particleCount = 4
         for (let i = 0; i < particleCount; i++) {
           setTimeout(() => {
             if (!isFocusedRef.current || !wrapper) return
@@ -60,8 +60,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             )
 
             gsap.to(particle, {
-              x: (Math.random() - 0.5) * 30,
-              y: (Math.random() - 0.5) * 30,
+              x: (Math.random() - 0.5) * 40,
+              y: (Math.random() - 0.5) * 40,
               rotation: Math.random() * 360,
               duration: 2 + Math.random(),
               ease: 'none',
@@ -117,13 +117,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         wrapper.style.setProperty('--glow-y', `${relativeY}%`)
       }
 
-      input.addEventListener('focus', handleFocus)
-      input.addEventListener('blur', handleBlur)
+      textarea.addEventListener('focus', handleFocus)
+      textarea.addEventListener('blur', handleBlur)
       wrapper.addEventListener('mousemove', handleMouseMove)
 
       return () => {
-        input.removeEventListener('focus', handleFocus)
-        input.removeEventListener('blur', handleBlur)
+        textarea.removeEventListener('focus', handleFocus)
+        textarea.removeEventListener('blur', handleBlur)
         wrapper.removeEventListener('mousemove', handleMouseMove)
       }
     }, [error, disableMagic, props.disabled])
@@ -141,14 +141,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <div
             className="absolute inset-0 rounded-lg pointer-events-none opacity-0 focus-glow transition-opacity duration-300"
             style={{
-              background: `radial-gradient(120px circle at var(--glow-x) var(--glow-y), rgba(${error ? '239, 68, 68' : '20, 184, 166'}, 0.1), transparent 70%)`
+              background: `radial-gradient(150px circle at var(--glow-x) var(--glow-y), rgba(${error ? '239, 68, 68' : '20, 184, 166'}, 0.1), transparent 70%)`
             }}
           />
         )}
-        <input
-          type={type}
+        <textarea
           className={cn(
-            'relative flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300',
+            'relative flex min-h-[80px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 resize-y',
             error && 'border-red-500 focus:ring-red-600',
             className
           )}
@@ -172,6 +171,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 )
 
-Input.displayName = 'Input'
+Textarea.displayName = 'Textarea'
 
-export { Input }
+export { Textarea }

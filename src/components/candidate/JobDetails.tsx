@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Building2, MapPin } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { ApplyJobModal } from '@/components/modals/ApplyJobModal'
+import type { Job as OriginalJob } from '@/lib/supabase/jobs'
 
 interface Job {
   id: string
@@ -20,10 +21,11 @@ interface Job {
 
 interface JobDetailsProps {
   job: Job | null
+  originalJob: OriginalJob | null
 }
 
-export function JobDetails({ job }: JobDetailsProps) {
-  const router = useRouter()
+export function JobDetails({ job, originalJob }: JobDetailsProps) {
+  const [showApplyModal, setShowApplyModal] = useState(false)
 
   if (!job) {
     return (
@@ -84,11 +86,11 @@ export function JobDetails({ job }: JobDetailsProps) {
       {/* Apply Button */}
       <div className="mb-8">
         <Button
-          onClick={() => router.push(`/apply/${job.id}`)}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3"
+          onClick={() => setShowApplyModal(true)}
+          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 shadow-lg shadow-orange-500/30"
           size="lg"
         >
-          Apply
+          Apply for this Position
         </Button>
       </div>
 
@@ -104,6 +106,13 @@ export function JobDetails({ job }: JobDetailsProps) {
           ))}
         </ul>
       </div>
+
+      {/* Apply Job Modal */}
+      <ApplyJobModal
+        isOpen={showApplyModal}
+        onClose={() => setShowApplyModal(false)}
+        job={originalJob}
+      />
     </div>
   )
 }

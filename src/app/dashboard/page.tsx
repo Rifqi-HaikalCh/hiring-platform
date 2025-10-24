@@ -155,6 +155,7 @@ export default function CandidateDashboard() {
 
   const transformedJobs = jobs.map(transformJobForCandidate)
   const selectedJob = transformedJobs.find(job => job.id === selectedJobId) || null
+  const selectedOriginalJob = jobs.find(job => job.id === selectedJobId) || null
 
   if (loading) {
     return (
@@ -196,7 +197,7 @@ export default function CandidateDashboard() {
 
       {/* Right Column - Job Details */}
       <div className="flex-1 bg-gray-50">
-        <JobDetails job={selectedJob} />
+        <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
       </div>
     </div>
   )

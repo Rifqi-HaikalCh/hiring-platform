@@ -106,3 +106,60 @@ export async function getUserProfile(userId: string) {
     return { data: null, error }
   }
 }
+
+export async function handleMagicLinkSignIn(email: string) {
+  try {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return { data, error: null }
+  } catch (error) {
+    console.error('Magic link error:', error)
+    return { data: null, error }
+  }
+}
+
+export async function handleForgotPassword(email: string) {
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return { data, error: null }
+  } catch (error) {
+    console.error('Forgot password error:', error)
+    return { data: null, error }
+  }
+}
+
+export async function handleGoogleSignIn() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return { data, error: null }
+  } catch (error) {
+    console.error('Google sign in error:', error)
+    return { data: null, error }
+  }
+}

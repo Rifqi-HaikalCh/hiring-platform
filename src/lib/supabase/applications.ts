@@ -26,16 +26,28 @@ export async function getApplicationsByJobId(jobId: string) {
       .from('applications')
       .select('*')
       .eq('job_id', jobId)
-      .order('applied_at', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Get applications by job ID error:', error)
+      console.error('Get applications by job ID error:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+        rawError: error
+      })
       throw error
     }
 
     return { data: data as Application[], error: null }
-  } catch (error) {
-    console.error('Get applications by job ID error:', error)
+  } catch (error: any) {
+    console.error('Get applications by job ID error:', {
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code,
+      rawError: error
+    })
     return { data: null, error }
   }
 }

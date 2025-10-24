@@ -240,39 +240,56 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <div className="flex items-center justify-between mb-4">
-                  <Dialog.Title className="text-lg font-medium leading-6 text-gray-900">
-                    AI Gesture Photo Capture
-                  </Dialog.Title>
-                  <button
-                    onClick={handleClose}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
+              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
+                {/* Header */}
+                <div className="border-b border-gray-200 bg-white px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-teal-100">
+                        <Hand className="h-5 w-5 text-teal-600" />
+                      </div>
+                      <div>
+                        <Dialog.Title className="text-lg font-semibold text-gray-900">
+                          AI Gesture Capture
+                        </Dialog.Title>
+                        <p className="text-sm text-gray-600">Follow the gesture sequence to capture your photo</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleClose}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-5 w-5 text-gray-600" />
+                    </button>
+                  </div>
                 </div>
 
-                {isModelLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="w-8 h-8 bg-teal-600 rounded-full mx-auto mb-4 animate-pulse"></div>
-                      <p className="text-gray-600">Loading AI model...</p>
+                {/* Content Area */}
+                <div className="px-6 py-6 bg-white">
+                  {isModelLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="w-8 h-8 bg-teal-600 rounded-full mx-auto mb-4 animate-pulse"></div>
+                        <p className="text-gray-600">Loading AI model...</p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
+                  ) : (
+                    <div className="space-y-6">
                     {/* Pose Instructions */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="text-sm font-medium text-gray-900 mb-3">Follow the gesture sequence:</h3>
-                      <div className="flex justify-center space-x-8">
+                    <div className="bg-teal-50 p-5 rounded-xl border border-teal-200">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                        <Hand className="h-4 w-4 mr-2 text-teal-600" />
+                        Follow the gesture sequence:
+                      </h3>
+                      <div className="flex justify-center space-x-6">
                         {POSE_INSTRUCTIONS.map((pose) => (
-                          <div key={pose.id} className={`text-center p-3 rounded-lg transition-colors ${
+                          <div key={pose.id} className={`text-center p-4 rounded-xl transition-all duration-300 ${
                             currentPose === pose.id
-                              ? 'bg-teal-100 border-2 border-teal-500'
+                              ? 'bg-white border-2 border-teal-500 shadow-lg shadow-teal-200/50 scale-105'
                               : currentPose > pose.id
-                                ? 'bg-green-100 border-2 border-green-500'
-                                : 'bg-white border-2 border-gray-200'
+                                ? 'bg-white border-2 border-green-500 shadow-md shadow-green-100/50'
+                                : 'bg-white/50 border-2 border-gray-200/50'
                           }`}>
                             <div className="text-3xl mb-2">{pose.emoji}</div>
                             <div className="text-xs font-medium text-gray-700">{pose.name}</div>
@@ -333,13 +350,13 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
 
                     {/* Feedback */}
                     <div className="text-center">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-blue-800 font-medium">
+                      <div className="bg-teal-50 border-2 border-teal-200 rounded-xl p-5">
+                        <p className="text-teal-900 font-semibold text-base">
                           {feedback || `Show ${getCurrentPoseInstruction(currentPose).description.toLowerCase()}`}
                         </p>
                         {poseDetected && (
-                          <div className="mt-2">
-                            <div className="inline-flex items-center text-green-600">
+                          <div className="mt-3">
+                            <div className="inline-flex items-center text-green-600 bg-green-50 px-4 py-2 rounded-lg">
                               <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
@@ -353,15 +370,16 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
                       <div className="mt-4">
                         <button
                           onClick={resetPoses}
-                          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                          className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={isCapturing}
                         >
                           Reset Sequence
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

@@ -1,17 +1,17 @@
 'use client'
 
-import { InputHTMLAttributes, forwardRef, useEffect, useRef } from 'react'
+import { SelectHTMLAttributes, forwardRef, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { gsap } from 'gsap'
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: boolean
   disableMagic?: boolean
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type = 'text', error, disableMagic = false, ...props }, ref) => {
-    const internalRef = useRef<HTMLInputElement>(null)
+const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, error, disableMagic = false, children, ...props }, ref) => {
+    const internalRef = useRef<HTMLSelectElement>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
     const particlesRef = useRef<HTMLDivElement[]>([])
     const isFocusedRef = useRef(false)
@@ -19,9 +19,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     useEffect(() => {
       if (disableMagic || props.disabled) return
 
-      const input = internalRef.current
+      const select = internalRef.current
       const wrapper = wrapperRef.current
-      if (!input || !wrapper) return
+      if (!select || !wrapper) return
 
       const glowColor = error ? '239, 68, 68' : '20, 184, 166' // red for error, teal for normal
 
@@ -117,13 +117,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         wrapper.style.setProperty('--glow-y', `${relativeY}%`)
       }
 
-      input.addEventListener('focus', handleFocus)
-      input.addEventListener('blur', handleBlur)
+      select.addEventListener('focus', handleFocus)
+      select.addEventListener('blur', handleBlur)
       wrapper.addEventListener('mousemove', handleMouseMove)
 
       return () => {
-        input.removeEventListener('focus', handleFocus)
-        input.removeEventListener('blur', handleBlur)
+        select.removeEventListener('focus', handleFocus)
+        select.removeEventListener('blur', handleBlur)
         wrapper.removeEventListener('mousemove', handleMouseMove)
       }
     }, [error, disableMagic, props.disabled])
@@ -145,10 +145,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             }}
           />
         )}
-        <input
-          type={type}
+        <select
           className={cn(
-            'relative flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300',
+            'relative flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300',
             error && 'border-red-500 focus:ring-red-600',
             className
           )}
@@ -161,7 +160,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             }
           }}
           {...props}
-        />
+        >
+          {children}
+        </select>
         <style jsx>{`
           .relative:focus-within .focus-glow {
             opacity: 1 !important;
@@ -172,6 +173,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 )
 
-Input.displayName = 'Input'
+Select.displayName = 'Select'
 
-export { Input }
+export { Select }

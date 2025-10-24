@@ -593,21 +593,26 @@ export default function ManageCandidatesPage() {
         </div>
 
         {/* Candidates Table */}
-        <Card className="p-6">
+        <Card className="p-6 bg-white/80 backdrop-blur-md border-gray-200/50 shadow-xl shadow-teal-500/5">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Candidates ({applications.length})
-              </h2>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-sky-600 bg-clip-text text-transparent">
+                  Candidates
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {applications.length} {applications.length === 1 ? 'application' : 'applications'} received
+                </p>
+              </div>
 
               {/* Global Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 transition-colors group-hover:text-teal-500" />
                 <Input
                   placeholder="Search candidates..."
                   value={globalFilter ?? ''}
                   onChange={(e) => setGlobalFilter(String(e.target.value))}
-                  className="pl-10 w-64"
+                  className="pl-10 w-72 bg-white/60 backdrop-blur-sm border-gray-300/50 focus:bg-white transition-all"
                 />
               </div>
             </div>
@@ -619,16 +624,16 @@ export default function ManageCandidatesPage() {
               />
             ) : (
               <>
-                {/* Table */}
-                <div className="overflow-x-auto border rounded-lg">
+                {/* Modern Glassmorphism Table */}
+                <div className="overflow-x-auto rounded-2xl border border-gray-200/50 bg-white/50 backdrop-blur-sm">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead>
                       {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
+                        <tr key={headerGroup.id} className="border-b border-gray-200/50 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80">
                           {headerGroup.headers.map(header => (
                             <th
                               key={header.id}
-                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0 relative"
+                              className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative"
                               style={{ width: header.getSize() }}
                             >
                               <DraggableHeader header={header} table={table} />
@@ -637,16 +642,45 @@ export default function ManageCandidatesPage() {
                         </tr>
                       ))}
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {table.getRowModel().rows.map(row => (
-                        <tr key={row.id} className="hover:bg-gray-50">
-                          {row.getVisibleCells().map(cell => (
+                    <tbody className="divide-y divide-gray-100/50">
+                      {table.getRowModel().rows.map((row, index) => (
+                        <tr
+                          key={row.id}
+                          className="group relative transition-all duration-300 hover:bg-gradient-to-r hover:from-teal-50/40 hover:via-transparent hover:to-sky-50/40 magic-bento-row"
+                          style={{
+                            animationDelay: `${index * 50}ms`
+                          }}
+                        >
+                          {row.getVisibleCells().map((cell, cellIndex) => (
                             <td
                               key={cell.id}
-                              className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 last:border-r-0"
+                              className={`px-6 py-5 text-sm text-gray-900 transition-all duration-300 group-hover:scale-[1.01] ${
+                                cellIndex === 0 ? 'rounded-l-xl relative' : 'relative'
+                              } ${
+                                cellIndex === row.getVisibleCells().length - 1 ? 'rounded-r-xl' : ''
+                              }`}
                               style={{ width: cell.column.getSize() }}
                             >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              {/* Magic Bento Grid Animation - Only on first cell */}
+                              {cellIndex === 0 && (
+                                <div className="absolute inset-0 left-0 right-[calc(-100vw)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden rounded-xl -z-0">
+                                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-sky-500/5 to-purple-500/5 animate-gradient-shift"></div>
+                                  <div className="bento-grid absolute inset-0">
+                                    {[...Array(20)].map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="bento-cell"
+                                        style={{
+                                          animationDelay: `${i * 30}ms`
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="relative z-10">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </div>
                             </td>
                           ))}
                         </tr>
@@ -656,15 +690,15 @@ export default function ManageCandidatesPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-700">
-                      Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200/50">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Page <span className="text-teal-600 font-bold">{table.getState().pagination.pageIndex + 1}</span> of <span className="font-bold">{table.getPageCount()}</span>
                     </span>
                     <select
                       value={table.getState().pagination.pageSize}
                       onChange={e => table.setPageSize(Number(e.target.value))}
-                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                      className="border border-gray-300/50 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
                     >
                       {[5, 10, 20, 50].map(pageSize => (
                         <option key={pageSize} value={pageSize}>
@@ -680,6 +714,7 @@ export default function ManageCandidatesPage() {
                       size="sm"
                       onClick={() => table.previousPage()}
                       disabled={!table.getCanPreviousPage()}
+                      className="font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-500 transition-all disabled:opacity-40"
                     >
                       Previous
                     </Button>
@@ -688,6 +723,7 @@ export default function ManageCandidatesPage() {
                       size="sm"
                       onClick={() => table.nextPage()}
                       disabled={!table.getCanNextPage()}
+                      className="font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-500 transition-all disabled:opacity-40"
                     >
                       Next
                     </Button>
