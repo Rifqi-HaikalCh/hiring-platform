@@ -152,3 +152,59 @@ export async function getUserAppliedJobIds(userId: string) {
     return { data: [], error }
   }
 }
+
+// Get all jobs a user has applied to with full details
+export async function getUserAppliedJobs(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select(`
+        id,
+        created_at,
+        status,
+        jobs!inner (
+          id,
+          job_title,
+          job_type,
+          company_name,
+          company_logo,
+          location,
+          min_salary,
+          max_salary,
+          status
+        )
+      `)
+      .eq('applicant_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Get user applied jobs error:', error)
+      throw error
+    }
+
+    // Transform data to flatten structure
+    // Supabase returns jobs as an object (not array) when using !inner
+    const transformedData = data?.map((app: any) => ({
+      id: app.id,
+      job_id: app.jobs?.id || '',
+      status: app.status,
+      created_at: app.created_at,
+      job: {
+        id: app.jobs?.id || '',
+        job_title: app.jobs?.job_title || '',
+        job_type: app.jobs?.job_type || '',
+        company_name: app.jobs?.company_name || '',
+        company_logo: app.jobs?.company_logo || '',
+        location: app.jobs?.location || '',
+        min_salary: app.jobs?.min_salary || 0,
+        max_salary: app.jobs?.max_salary || 0,
+        status: app.jobs?.status || ''
+      }
+    }))
+
+    return { data: transformedData, error: null }
+  } catch (error) {
+    console.error('Get user applied jobs error:', error)
+    return { data: null, error }
+  }
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase/client'
+import { getUserAppliedJobs } from '@/lib/supabase/applications'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { toast } from 'react-hot-toast'
@@ -42,24 +42,7 @@ export default function MyApplicationsPage() {
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('applications')
-        .select(`
-          *,
-          job:jobs (
-            id,
-            job_title,
-            job_type,
-            company_name,
-            company_logo,
-            location,
-            min_salary,
-            max_salary,
-            status
-          )
-        `)
-        .eq('applicant_id', user.id)
-        .order('created_at', { ascending: false })
+      const { data, error } = await getUserAppliedJobs(user.id)
 
       if (error) {
         console.error('Load applications error:', error)
@@ -67,7 +50,7 @@ export default function MyApplicationsPage() {
         return
       }
 
-      setApplications(data as any)
+      setApplications(data || [])
     } catch (error) {
       console.error('Load applications error:', error)
       toast.error('An error occurred while loading applications')
