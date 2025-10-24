@@ -262,7 +262,7 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
 export default function AdminDashboard() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'recent'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive' | 'draft' | 'recent'>('all')
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -359,6 +359,12 @@ export default function AdminDashboard() {
     if (activeFilter === 'active') {
       return matchesSearch && job.status === 'active'
     }
+    if (activeFilter === 'inactive') {
+      return matchesSearch && job.status === 'inactive'
+    }
+    if (activeFilter === 'draft') {
+      return matchesSearch && job.status === 'draft'
+    }
     if (activeFilter === 'recent') {
       const today = new Date()
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -430,18 +436,42 @@ export default function AdminDashboard() {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
               <Button
+                variant={activeFilter === 'all' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('all')}
+                className="transition-all duration-300 hover:scale-105"
+              >
+                All Jobs
+              </Button>
+              <Button
                 variant={activeFilter === 'active' ? 'primary' : 'outline'}
                 size="sm"
-                onClick={() => setActiveFilter(activeFilter === 'active' ? 'all' : 'active')}
+                onClick={() => setActiveFilter('active')}
                 className="transition-all duration-300 hover:scale-105"
               >
                 <TrendingUp className="h-4 w-4 mr-1" />
                 Active
               </Button>
               <Button
+                variant={activeFilter === 'inactive' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('inactive')}
+                className="transition-all duration-300 hover:scale-105"
+              >
+                Inactive
+              </Button>
+              <Button
+                variant={activeFilter === 'draft' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setActiveFilter('draft')}
+                className="transition-all duration-300 hover:scale-105"
+              >
+                Draft
+              </Button>
+              <Button
                 variant={activeFilter === 'recent' ? 'primary' : 'outline'}
                 size="sm"
-                onClick={() => setActiveFilter(activeFilter === 'recent' ? 'all' : 'recent')}
+                onClick={() => setActiveFilter('recent')}
                 className="transition-all duration-300 hover:scale-105"
               >
                 <Clock className="h-4 w-4 mr-1" />

@@ -44,7 +44,10 @@ import {
   ChevronRight,
   X,
   Save,
-  GripVertical
+  GripVertical,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react'
 
 // Components
@@ -59,6 +62,7 @@ import { Fragment } from 'react'
 import { getJobById, updateJob, updateJobStatus, deleteJob, Job } from '@/lib/supabase/jobs'
 import {
   getApplicationsByJobId,
+  updateApplicationStatus,
   Application,
   extractCandidateData,
   CandidateData
@@ -352,6 +356,29 @@ export default function ManageCandidatesPage() {
     useSensor(KeyboardSensor)
   )
 
+  // Handle status change for candidates
+  const handleStatusChange = async (applicationId: string, newStatus: 'pending' | 'accepted' | 'rejected') => {
+    try {
+      const { data, error } = await updateApplicationStatus(applicationId, newStatus)
+
+      if (error) {
+        toast.error('Failed to update candidate status')
+        return
+      }
+
+      // Update local state
+      setApplications(prevApplications =>
+        prevApplications.map(app =>
+          app.id === applicationId ? { ...app, status: newStatus } : app
+        )
+      )
+
+      toast.success(`Candidate ${newStatus === 'accepted' ? 'accepted' : newStatus === 'rejected' ? 'rejected' : 'set to pending'} successfully`)
+    } catch (error) {
+      toast.error('An error occurred while updating status')
+    }
+  }
+
   // Define table columns
   const columns = useMemo(() => [
     columnHelper.display({
@@ -435,7 +462,49 @@ export default function ManageCandidatesPage() {
       header: 'Applied Date',
       cell: info => new Date(info.getValue()).toLocaleDateString(),
     }),
-  ], [])
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const applicationId = row.original.application_id
+        const currentStatus = row.original.status
+
+        return (
+          <div className="flex items-center gap-2">
+            {currentStatus !== 'accepted' && (
+              <button
+                onClick={() => handleStatusChange(applicationId, 'accepted')}
+                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                title="Accept"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </button>
+            )}
+            {currentStatus !== 'rejected' && (
+              <button
+                onClick={() => handleStatusChange(applicationId, 'rejected')}
+                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                title="Reject"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+            {(currentStatus === 'accepted' || currentStatus === 'rejected') && currentStatus !== 'pending' && (
+              <button
+                onClick={() => handleStatusChange(applicationId, 'pending')}
+                className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
+                title="Set to Pending"
+              >
+                <Clock className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )
+      },
+      enableSorting: false,
+      enableResizing: false,
+    }),
+  ], [handleStatusChange])
 
   // Transform applications data for table
   const candidateData = useMemo(() => {

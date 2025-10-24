@@ -308,6 +308,17 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         return
       }
 
+      // Validate salary range
+      if (jobData.min_salary > jobData.max_salary) {
+        toast.error('Minimum salary cannot be greater than maximum salary')
+        return
+      }
+
+      if (jobData.min_salary < 0 || jobData.max_salary < 0) {
+        toast.error('Salary values must be positive numbers')
+        return
+      }
+
       const { error } = await supabase
         .from('jobs')
         .insert([jobData])
