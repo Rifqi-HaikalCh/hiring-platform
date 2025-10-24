@@ -58,6 +58,20 @@ body {
   position: relative;
 }
 
+/* Lucide React Icons Fix */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  shape-rendering: auto;
+}
+
+/* Ensure icons render properly in buttons and other components */
+button svg,
+a svg,
+.icon svg {
+  flex-shrink: 0;
+}
+
 body::before {
   content: "";
   position: fixed;

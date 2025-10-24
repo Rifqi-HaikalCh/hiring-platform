@@ -215,12 +215,12 @@ export function JobCardCandidate({ job, isActive, onClick }: JobCardCandidatePro
         onClick={() => onClick(job.id)}
       >
         {/* Border glow effect */}
-        <div className="absolute inset-0 rounded-lg pointer-events-none"
+        <div
+          className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
           style={{
             background: `radial-gradient(300px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.15), transparent 60%)`,
             opacity: 0
           }}
-          className="border-glow-effect"
         />
 
         <div className="relative z-10">

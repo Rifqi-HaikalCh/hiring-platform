@@ -247,12 +247,12 @@ export function JobCardAdmin({ job, onManage, onEdit, onToggleStatus, onDelete }
     } as React.CSSProperties}>
       <Card className="relative p-4 transition-shadow overflow-hidden border border-gray-200 hover:border-sky-300">
         {/* Border glow effect */}
-        <div className="absolute inset-0 rounded-lg pointer-events-none"
+        <div
+          className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
           style={{
             background: `radial-gradient(300px circle at var(--glow-x) var(--glow-y), rgba(14, 165, 233, 0.15), transparent 60%)`,
             opacity: 0
           }}
-          className="border-glow-effect"
         />
 
         <div className="relative z-10">

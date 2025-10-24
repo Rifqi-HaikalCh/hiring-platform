@@ -347,7 +347,7 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </button>
                         <div>
                           <Dialog.Title className="text-lg font-semibold text-gray-900">
-                            Apply {job.job_title} at {job.company_name || 'Company'}
+                            Apply {job.job_title} at {job.company || 'Company'}
                           </Dialog.Title>
                         </div>
                       </div>

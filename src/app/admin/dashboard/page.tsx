@@ -205,12 +205,12 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
     } as React.CSSProperties}>
       <Card className="relative bg-gradient-to-br from-gray-800 to-gray-900 text-white p-6 overflow-hidden border border-gray-700 hover:border-teal-400 cursor-pointer transition-all">
         {/* Border glow effect */}
-        <div className="absolute inset-0 rounded-lg pointer-events-none"
+        <div
+          className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
           style={{
             background: `radial-gradient(400px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.2), transparent 60%)`,
             opacity: 0
           }}
-          className="border-glow-effect"
         />
 
         <div className="relative z-10">
@@ -278,8 +278,8 @@ export default function AdminDashboard() {
     router.push(`/admin/jobs/${jobId}/manage`)
   }
 
-  const handleJobEdit = (job: Job) => {
-    toast.info('Edit job functionality coming soon')
+  const handleJobEdit = (job: ReturnType<typeof transformJobForAdmin>) => {
+    toast('Edit job functionality coming soon')
   }
 
   const handleJobToggleStatus = async (jobId: string) => {
