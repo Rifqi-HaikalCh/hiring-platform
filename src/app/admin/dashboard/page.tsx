@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Briefcase, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, Plus, Briefcase, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
