@@ -13,7 +13,17 @@ import { getJobs, updateJobStatus, deleteJob, type Job } from '@/lib/supabase/jo
 import { toast } from 'react-hot-toast'
 import { gsap } from 'gsap'
 
-const transformJobForAdmin = (job: any) => ({
+const transformJobForAdmin = (job: any): {
+  id: string
+  title: string
+  status: 'active' | 'inactive' | 'draft'
+  startDate: string
+  salaryRange: { min: number; max: number }
+  jobType?: string
+  companyName?: string
+  companyLogo?: string
+  location?: string
+} => ({
   id: job.id,
   title: job.job_title || job.title,
   status: job.status,
@@ -23,9 +33,14 @@ const transformJobForAdmin = (job: any) => ({
     year: 'numeric'
   }),
   salaryRange: {
-    min: job.min_salary || job.salary_min,
-    max: job.max_salary || job.salary_max
-  }
+    min: job.min_salary || job.salary_min || 0,
+    max: job.max_salary || job.salary_max || 0
+  },
+  ...(job.job_type && { jobType: job.job_type }),
+  ...(job.company_name && { companyName: job.company_name }),
+  ...((job.company || job.company_name === undefined) && job.company && { companyName: job.company }),
+  ...(job.company_logo && { companyLogo: job.company_logo }),
+  ...(job.location && { location: job.location })
 })
 
 // Create Job Card dengan Magic Bento Effects

@@ -109,3 +109,46 @@ export function extractCandidateData(applicationData: any): CandidateData {
     linkedin_url: applicationData.linkedin_link || applicationData.linkedin_url || applicationData.linkedinUrl || applicationData.linkedin || '', // Fixed: check linkedin_link first
   }
 }
+
+// Check if user has already applied to a job
+export async function checkIfApplied(jobId: string, userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('applicant_id', userId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Check if applied error:', error)
+      throw error
+    }
+
+    return { hasApplied: !!data, error: null }
+  } catch (error) {
+    console.error('Check if applied error:', error)
+    return { hasApplied: false, error }
+  }
+}
+
+// Get all applied job IDs for a user
+export async function getUserAppliedJobIds(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('job_id')
+      .eq('applicant_id', userId)
+
+    if (error) {
+      console.error('Get applied job IDs error:', error)
+      throw error
+    }
+
+    const jobIds = data?.map(app => app.job_id) || []
+    return { data: jobIds, error: null }
+  } catch (error) {
+    console.error('Get applied job IDs error:', error)
+    return { data: [], error }
+  }
+}

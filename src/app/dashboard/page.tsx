@@ -4,8 +4,12 @@ import { useState, useEffect } from 'react'
 import { JobCardCandidate } from '@/components/candidate/JobCardCandidate'
 import { JobDetails } from '@/components/candidate/JobDetails'
 import { getJobs, type Job } from '@/lib/supabase/jobs'
+import { getUserAppliedJobIds } from '@/lib/supabase/applications'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
 
 // Transform job data for candidate display
 const transformJobForCandidate = (job: Job) => {
@@ -16,111 +20,37 @@ const transformJobForCandidate = (job: Job) => {
 
   return {
     id: job.id,
-    title: job.job_title, // Use job_title from database
-    company: job.company || 'Company Name', // Fallback since this field might not exist
-    location: job.location || 'Remote', // Fallback since this field might not exist
+    title: job.job_title,
+    company: job.company_name || job.company || 'Company Name',
+    location: job.location || 'Remote',
     salaryRange: {
-      min: job.min_salary || 0, // Use min_salary from database
-      max: job.max_salary || 0  // Use max_salary from database
+      min: job.min_salary || 0,
+      max: job.max_salary || 0
     },
     type: job.job_type,
+    jobType: job.job_type,
+    companyLogo: job.company_logo,
     description: descriptionArray
   }
 }
-
-// Mock data for demonstration (keeping as fallback)
-const mockJobs = [
-  {
-    id: '1',
-    title: 'Front End Developer',
-    company: 'TechCorp Indonesia',
-    location: 'Jakarta, Indonesia',
-    salaryRange: { min: 7000000, max: 8000000 },
-    type: 'Full-Time',
-    description: [
-      'Develop and maintain user-facing web applications using React.js and TypeScript',
-      'Collaborate with designers to implement pixel-perfect UI components',
-      'Optimize applications for maximum speed and scalability',
-      'Write clean, maintainable, and well-documented code',
-      'Participate in code reviews and technical discussions',
-      'Stay up-to-date with the latest frontend technologies and best practices'
-    ]
-  },
-  {
-    id: '2',
-    title: 'UI/UX Designer',
-    company: 'Design Studio Co',
-    location: 'Bandung, Indonesia',
-    salaryRange: { min: 6000000, max: 8000000 },
-    type: 'Full-Time',
-    description: [
-      'Create user-centered design solutions for web and mobile applications',
-      'Conduct user research and usability testing to inform design decisions',
-      'Develop wireframes, prototypes, and high-fidelity mockups',
-      'Collaborate with developers to ensure design implementation quality',
-      'Maintain and evolve design systems and component libraries',
-      'Present design concepts and rationale to stakeholders'
-    ]
-  },
-  {
-    id: '3',
-    title: 'Backend Developer',
-    company: 'ServerTech Solutions',
-    location: 'Surabaya, Indonesia',
-    salaryRange: { min: 8000000, max: 10000000 },
-    type: 'Full-Time',
-    description: [
-      'Design and develop scalable backend APIs using Node.js and Express',
-      'Work with databases (PostgreSQL, MongoDB) to design efficient data schemas',
-      'Implement authentication and authorization systems',
-      'Write comprehensive unit and integration tests',
-      'Deploy and monitor applications on cloud platforms (AWS, GCP)',
-      'Collaborate with frontend teams to integrate APIs seamlessly'
-    ]
-  },
-  {
-    id: '4',
-    title: 'Product Manager',
-    company: 'InnovateTech',
-    location: 'Jakarta, Indonesia',
-    salaryRange: { min: 12000000, max: 15000000 },
-    type: 'Full-Time',
-    description: [
-      'Define product strategy and roadmap based on market research and user feedback',
-      'Work closely with engineering teams to prioritize features and manage development',
-      'Analyze product metrics and user behavior to drive data-driven decisions',
-      'Coordinate cross-functional teams including design, engineering, and marketing',
-      'Conduct competitive analysis and stay informed about industry trends',
-      'Communicate product vision and updates to stakeholders and leadership'
-    ]
-  },
-  {
-    id: '5',
-    title: 'DevOps Engineer',
-    company: 'CloudOps Pro',
-    location: 'Jakarta, Indonesia',
-    salaryRange: { min: 9000000, max: 12000000 },
-    type: 'Full-Time',
-    description: [
-      'Manage and optimize CI/CD pipelines for automated deployment processes',
-      'Monitor system performance and implement infrastructure improvements',
-      'Work with containerization technologies like Docker and Kubernetes',
-      'Implement and maintain security best practices across all environments',
-      'Collaborate with development teams to streamline deployment workflows',
-      'Troubleshoot production issues and implement preventive measures'
-    ]
-  }
-]
 
 export default function CandidateDashboard() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [appliedJobIds, setAppliedJobIds] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterJobType, setFilterJobType] = useState<string>('all')
+  const [filterLocation, setFilterLocation] = useState<string>('all')
   const { user } = useAuth()
 
   useEffect(() => {
     loadJobs()
-  }, [])
+    if (user) {
+      loadAppliedJobs()
+    }
+  }, [user])
 
   const loadJobs = async () => {
     try {
@@ -148,14 +78,55 @@ export default function CandidateDashboard() {
     }
   }
 
+  const loadAppliedJobs = async () => {
+    if (!user) return
+
+    try {
+      const { data, error } = await getUserAppliedJobIds(user.id)
+      if (!error && data) {
+        setAppliedJobIds(data)
+      }
+    } catch (error) {
+      console.error('Load applied jobs error:', error)
+    }
+  }
+
   const handleJobSelect = (jobId: string) => {
     setSelectedJobId(jobId)
   }
 
-
   const transformedJobs = jobs.map(transformJobForCandidate)
-  const selectedJob = transformedJobs.find(job => job.id === selectedJobId) || null
-  const selectedOriginalJob = jobs.find(job => job.id === selectedJobId) || null
+
+  // Filter logic
+  const filteredJobs = transformedJobs.filter(job => {
+    // Search filter
+    const matchesSearch = searchQuery === '' ||
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.location.toLowerCase().includes(searchQuery.toLowerCase())
+
+    // Job type filter
+    const matchesJobType = filterJobType === 'all' || job.jobType === filterJobType
+
+    // Location filter
+    const matchesLocation = filterLocation === 'all' || job.location === filterLocation
+
+    return matchesSearch && matchesJobType && matchesLocation
+  })
+
+  // Get unique job types and locations for filters
+  const jobTypes = ['all', ...Array.from(new Set(transformedJobs.map(j => j.jobType).filter(Boolean)))]
+  const locations = ['all', ...Array.from(new Set(transformedJobs.map(j => j.location).filter(Boolean)))]
+
+  const selectedJob = filteredJobs.find(job => job.id === selectedJobId) || filteredJobs[0] || null
+  const selectedOriginalJob = jobs.find(job => job.id === (selectedJob?.id || selectedJobId)) || null
+
+  // Update selected job when filters change
+  useEffect(() => {
+    if (filteredJobs.length > 0 && !filteredJobs.find(j => j.id === selectedJobId)) {
+      setSelectedJobId(filteredJobs[0].id)
+    }
+  }, [searchQuery, filterJobType, filterLocation, filteredJobs])
 
   if (loading) {
     return (
@@ -169,34 +140,137 @@ export default function CandidateDashboard() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Left Column - Job List */}
-      <div className="w-1/3 border-r border-gray-200 bg-white overflow-y-auto">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Available Jobs</h2>
-          <p className="text-sm text-gray-600 mt-1">{transformedJobs.length} jobs found</p>
+      <div className="w-full lg:w-[40%] border-r border-gray-200 bg-white/80 backdrop-blur-sm overflow-y-auto shadow-lg">
+        {/* Search and Filter Section */}
+        <div className="p-6 border-b border-gray-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
+
+          {/* Search Bar */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              type="text"
+              placeholder="Search by title, company, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 py-2.5 rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Toggle */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} found
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 rounded-lg transition-all ${showFilters ? 'bg-teal-50 border-teal-500 text-teal-700' : ''}`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+            </Button>
+          </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
+                <div className="flex flex-wrap gap-2">
+                  {jobTypes.map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setFilterJobType(type)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        filterJobType === type
+                          ? 'bg-teal-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {type === 'all' ? 'All Types' : type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <div className="flex flex-wrap gap-2">
+                  {locations.slice(0, 6).map(location => (
+                    <button
+                      key={location}
+                      onClick={() => setFilterLocation(location)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        filterLocation === location
+                          ? 'bg-teal-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {location === 'all' ? 'All Locations' : location}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(filterJobType !== 'all' || filterLocation !== 'all') && (
+                <button
+                  onClick={() => {
+                    setFilterJobType('all')
+                    setFilterLocation('all')
+                  }}
+                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Job Cards */}
         <div className="p-4 space-y-3">
-          {transformedJobs.length > 0 ? (
-            transformedJobs.map((job) => (
+          {filteredJobs.length > 0 ? (
+            filteredJobs.map((job) => (
               <JobCardCandidate
                 key={job.id}
                 job={job}
                 isActive={selectedJobId === job.id}
+                isApplied={appliedJobIds.includes(job.id)}
                 onClick={handleJobSelect}
               />
             ))
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500">No active jobs available at the moment.</p>
+              <p className="text-gray-500">No jobs match your filters.</p>
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setFilterJobType('all')
+                  setFilterLocation('all')
+                }}
+                className="mt-4 text-teal-600 hover:text-teal-700 font-medium"
+              >
+                Clear filters
+              </button>
             </div>
           )}
         </div>
       </div>
 
       {/* Right Column - Job Details */}
-      <div className="flex-1 bg-gray-50">
+      <div className="hidden lg:block flex-1 bg-gradient-to-br from-gray-50 to-white overflow-y-auto">
         <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
       </div>
     </div>

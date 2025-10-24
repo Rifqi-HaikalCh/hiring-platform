@@ -16,6 +16,10 @@ interface Job {
     min: number
     max: number
   }
+  jobType?: string
+  companyName?: string
+  companyLogo?: string
+  location?: string
 }
 
 interface JobCardAdminProps {
@@ -256,7 +260,7 @@ export function JobCardAdmin({ job, onManage, onEdit, onToggleStatus, onDelete }
         />
 
         <div className="relative z-10">
-          <div className="flex justify-between items-start mb-3">
+          <div className="flex justify-between items-start mb-4">
             <div className="flex items-center space-x-3">
               <Badge variant={getStatusVariant(job.status)}>
                 {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
@@ -326,11 +330,48 @@ export function JobCardAdmin({ job, onManage, onEdit, onToggleStatus, onDelete }
             </div>
           </div>
 
-          <div className="space-y-2 mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-            <p className="text-gray-600">
-              {formatCurrency(job.salaryRange.min)} - {formatCurrency(job.salaryRange.max)}
-            </p>
+          {/* Job Information with Logo */}
+          <div className="flex items-start space-x-4 mb-4">
+            {/* Company Logo */}
+            <div className="w-14 h-14 bg-gradient-to-br from-sky-50 to-teal-50 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200">
+              {job.companyLogo ? (
+                <img
+                  src={job.companyLogo}
+                  alt={job.companyName || 'Company'}
+                  className="w-10 h-10 object-contain"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                  {(job.companyName || 'C').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Job Details */}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">{job.title}</h3>
+
+              {job.companyName && (
+                <p className="text-sm font-medium text-gray-700 mb-2">{job.companyName}</p>
+              )}
+
+              <div className="flex flex-wrap gap-2 mb-2">
+                {job.jobType && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-teal-100 text-teal-800">
+                    {job.jobType}
+                  </span>
+                )}
+                {job.location && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                    {job.location}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-sm font-semibold text-sky-600">
+                {formatCurrency(job.salaryRange.min)} - {formatCurrency(job.salaryRange.max)}
+              </p>
+            </div>
           </div>
 
           <Button

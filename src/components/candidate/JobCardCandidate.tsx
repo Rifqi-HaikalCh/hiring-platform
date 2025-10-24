@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Building2, MapPin } from 'lucide-react'
+import { Building2, MapPin, CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { gsap } from 'gsap'
 
@@ -15,15 +15,17 @@ interface Job {
     max: number
   }
   companyLogo?: string
+  jobType?: string
 }
 
 interface JobCardCandidateProps {
   job: Job
   isActive: boolean
+  isApplied?: boolean
   onClick: (jobId: string) => void
 }
 
-export function JobCardCandidate({ job, isActive, onClick }: JobCardCandidateProps) {
+export function JobCardCandidate({ job, isActive, isApplied = false, onClick }: JobCardCandidateProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const particlesRef = useRef<HTMLDivElement[]>([])
   const isHoveredRef = useRef(false)
@@ -208,49 +210,74 @@ export function JobCardCandidate({ job, isActive, onClick }: JobCardCandidatePro
     } as React.CSSProperties}>
       <Card
         className={`relative p-4 cursor-pointer transition-all overflow-hidden ${
-          isActive
-            ? 'border-l-4 border-l-teal-600 bg-teal-50 border border-teal-200'
-            : 'border-l-4 border-l-transparent border border-gray-200 hover:border-teal-300'
+          isApplied
+            ? 'opacity-60 bg-gray-50 border border-gray-300 cursor-default'
+            : isActive
+            ? 'border-l-4 border-l-teal-600 bg-teal-50 border border-teal-200 shadow-lg shadow-teal-500/10'
+            : 'border-l-4 border-l-transparent border border-gray-200 hover:border-teal-300 hover:shadow-xl shadow-lg'
         }`}
-        onClick={() => onClick(job.id)}
+        onClick={() => !isApplied && onClick(job.id)}
       >
-        {/* Border glow effect */}
-        <div
-          className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
-          style={{
-            background: `radial-gradient(300px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.15), transparent 60%)`,
-            opacity: 0
-          }}
-        />
+        {/* Border glow effect - disable for applied jobs */}
+        {!isApplied && (
+          <div
+            className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
+            style={{
+              background: `radial-gradient(300px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.15), transparent 60%)`,
+              opacity: 0
+            }}
+          />
+        )}
+
+        {/* Applied badge */}
+        {isApplied && (
+          <div className="absolute top-3 right-3 z-20">
+            <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-teal-500 to-sky-500 text-white shadow-md">
+              <CheckCircle2 className="h-3 w-3 mr-1.5" />
+              Applied
+            </div>
+          </div>
+        )}
 
         <div className="relative z-10">
-          <div className="flex items-start space-x-3">
+          <div className="flex items-start space-x-4">
             {/* Company Logo */}
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className={`w-14 h-14 bg-gradient-to-br from-teal-50 to-sky-50 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200 ${isApplied ? 'opacity-70' : ''}`}>
               {job.companyLogo ? (
                 <img
                   src={job.companyLogo}
                   alt={job.company}
-                  className="w-8 h-8 object-contain"
+                  className="w-10 h-10 object-contain"
                 />
               ) : (
-                <Building2 className="h-6 w-6 text-gray-400" />
+                <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-sky-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                  {job.company.charAt(0).toUpperCase()}
+                </div>
               )}
             </div>
 
             {/* Job Details */}
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">
+              <h3 className={`text-lg font-semibold truncate mb-1 ${isApplied ? 'text-gray-600' : 'text-gray-900'}`}>
                 {job.title}
               </h3>
-              <p className="text-sm text-gray-600 mt-1">{job.company}</p>
+              <p className={`text-sm font-medium mb-2 ${isApplied ? 'text-gray-500' : 'text-gray-700'}`}>{job.company}</p>
 
-              <div className="flex items-center text-sm text-gray-500 mt-2">
-                <MapPin className="h-4 w-4 mr-1" />
-                <span>{job.location}</span>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {job.jobType && (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${isApplied ? 'bg-gray-200 text-gray-600' : 'bg-teal-100 text-teal-800'}`}>
+                    {job.jobType}
+                  </span>
+                )}
+                {job.location && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {job.location}
+                  </span>
+                )}
               </div>
 
-              <p className="text-sm font-medium text-gray-900 mt-2">
+              <p className={`text-sm font-semibold ${isApplied ? 'text-gray-500' : 'text-teal-600'}`}>
                 {formatCurrency(job.salaryRange.min)} - {formatCurrency(job.salaryRange.max)}
               </p>
             </div>

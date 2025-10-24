@@ -12,10 +12,13 @@ export interface Job {
   form_configuration: any
   created_at: string
   created_by?: string
+  // New fields for enhanced display
+  company_name?: string
+  company_logo?: string
+  location?: string
   // Legacy fields for compatibility
   title?: string
   company?: string
-  location?: string
   salary_min?: number
   salary_max?: number
   description?: string[]
