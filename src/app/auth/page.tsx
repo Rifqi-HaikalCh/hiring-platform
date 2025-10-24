@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   handleSignIn,
   handleSignUp,
@@ -50,6 +51,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const { setShowSplashScreen, setSplashRedirectTo } = useAuth()
 
   const loginForm = useForm<LoginFormData>()
   const registerForm = useForm<RegisterFormData>()
@@ -81,11 +83,12 @@ export default function AuthPage() {
         const userRole = result.user.user_metadata?.role
         toast.success('Login berhasil!')
 
-        if (userRole === 'admin') {
-          router.push('/admin/dashboard')
-        } else {
-          router.push('/dashboard')
-        }
+        // Set redirect URL based on role
+        const redirectUrl = userRole === 'admin' ? '/admin/dashboard' : '/dashboard'
+        setSplashRedirectTo(redirectUrl)
+
+        // Show splash screen
+        setShowSplashScreen(true)
       }
     } catch (error) {
       toast.error('Terjadi kesalahan yang tidak terduga')

@@ -56,7 +56,7 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Dialog, Transition } from '@headlessui/react'
+import { Dialog, Transition, Menu } from '@headlessui/react'
 import { Fragment } from 'react'
 
 // Services
@@ -464,47 +464,71 @@ export default function ManageCandidatesPage() {
         const currentStatus = row.original.status
 
         return (
-          <div className="flex items-center gap-2">
-            {currentStatus !== 'accepted' && (
-              <button
-                onClick={() => handleStatusChange(applicationId, 'accepted')}
-                className="group relative p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all hover:shadow-md"
-                title="Accept Candidate"
-                aria-label="Accept this candidate"
-              >
-                <CheckCircle className="h-4 w-4" />
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Accept
-                </span>
-              </button>
-            )}
-            {currentStatus !== 'rejected' && (
-              <button
-                onClick={() => handleStatusChange(applicationId, 'rejected')}
-                className="group relative p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:shadow-md"
-                title="Reject Candidate"
-                aria-label="Reject this candidate"
-              >
-                <XCircle className="h-4 w-4" />
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Reject
-                </span>
-              </button>
-            )}
-            {(currentStatus === 'accepted' || currentStatus === 'rejected') && currentStatus !== 'pending' && (
-              <button
-                onClick={() => handleStatusChange(applicationId, 'pending')}
-                className="group relative p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all hover:shadow-md"
-                title="Set to Pending"
-                aria-label="Set this candidate status to pending"
-              >
-                <Clock className="h-4 w-4" />
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Pending
-                </span>
-              </button>
-            )}
-          </div>
+          <Menu as="div" className="relative inline-block text-left">
+            <Menu.Button className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              <MoreHorizontal className="h-5 w-5" />
+            </Menu.Button>
+
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                <div className="py-1">
+                  {currentStatus !== 'accepted' && (
+                    <Menu.Item>
+                      {({ active }) => (
+                        <button
+                          onClick={() => handleStatusChange(applicationId, 'accepted')}
+                          className={`${
+                            active ? 'bg-green-50 text-green-900' : 'text-gray-700'
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          <CheckCircle className="mr-3 h-4 w-4 text-green-500" />
+                          Accept
+                        </button>
+                      )}
+                    </Menu.Item>
+                  )}
+                  {currentStatus !== 'rejected' && (
+                    <Menu.Item>
+                      {({ active }) => (
+                        <button
+                          onClick={() => handleStatusChange(applicationId, 'rejected')}
+                          className={`${
+                            active ? 'bg-red-50 text-red-900' : 'text-gray-700'
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          <XCircle className="mr-3 h-4 w-4 text-red-500" />
+                          Reject
+                        </button>
+                      )}
+                    </Menu.Item>
+                  )}
+                  {(currentStatus === 'accepted' || currentStatus === 'rejected') && currentStatus !== 'pending' && (
+                    <Menu.Item>
+                      {({ active }) => (
+                        <button
+                          onClick={() => handleStatusChange(applicationId, 'pending')}
+                          className={`${
+                            active ? 'bg-yellow-50 text-yellow-900' : 'text-gray-700'
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          <Clock className="mr-3 h-4 w-4 text-yellow-500" />
+                          Mark as Pending
+                        </button>
+                      )}
+                    </Menu.Item>
+                  )}
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
         )
       },
       enableSorting: false,
@@ -764,7 +788,7 @@ export default function ManageCandidatesPage() {
               <>
                 {/* Modern Glassmorphism Table */}
                 <div className="overflow-x-auto rounded-2xl border border-gray-200/50 bg-white/50 backdrop-blur-sm">
-                  <table className="w-full">
+                  <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                     <thead>
                       {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id} className="border-b border-gray-200/50 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80">
@@ -783,9 +807,9 @@ export default function ManageCandidatesPage() {
                                 className={`px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative ${
                                   isSelect ? 'sticky left-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50' : ''
                                 } ${
-                                  isFullName ? 'sticky left-[60px] z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50' : ''
+                                  isFullName ? 'sticky left-[60px] z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
                                 } ${
-                                  isActions ? 'sticky right-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-l border-gray-200/50' : ''
+                                  isActions ? 'sticky right-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-l border-gray-200/50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
                                 }`}
                                 style={{ width: header.getSize() }}
                               >
@@ -821,9 +845,9 @@ export default function ManageCandidatesPage() {
                               } ${
                                 isSelect ? 'sticky left-0 z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50' : ''
                               } ${
-                                isFullName ? 'sticky left-[60px] z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50' : ''
+                                isFullName ? 'sticky left-[60px] z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
                               } ${
-                                isActions ? 'sticky right-0 z-10 bg-white group-hover:bg-teal-50/30 border-l border-gray-200/50' : ''
+                                isActions ? 'sticky right-0 z-10 bg-white group-hover:bg-teal-50/30 border-l border-gray-200/50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
                               }`}
                               style={{ width: cell.column.getSize() }}
                             >

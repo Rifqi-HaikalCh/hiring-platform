@@ -4,23 +4,34 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { UserRole, getUserRole } from '@/lib/supabase/auth'
+import { LoginSplashScreen } from '@/components/auth/LoginSplashScreen'
 
 interface AuthContextType {
   user: User | null
   role: UserRole | null
   loading: boolean
+  showSplashScreen: boolean
+  splashRedirectTo: string | null
+  setShowSplashScreen: (show: boolean) => void
+  setSplashRedirectTo: (url: string | null) => void
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
   loading: true,
+  showSplashScreen: false,
+  splashRedirectTo: null,
+  setShowSplashScreen: () => {},
+  setSplashRedirectTo: () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showSplashScreen, setShowSplashScreen] = useState(false)
+  const [splashRedirectTo, setSplashRedirectTo] = useState<string | null>(null)
 
   useEffect(() => {
     // Get initial session
@@ -43,8 +54,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, loading, showSplashScreen, splashRedirectTo, setShowSplashScreen, setSplashRedirectTo }}>
       {children}
+      {showSplashScreen && (
+        <LoginSplashScreen
+          redirectTo={splashRedirectTo || undefined}
+          onComplete={() => {
+            setShowSplashScreen(false)
+            setSplashRedirectTo(null)
+          }}
+        />
+      )}
     </AuthContext.Provider>
   )
 }

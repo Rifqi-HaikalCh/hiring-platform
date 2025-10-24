@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { JobCardCandidate } from '@/components/candidate/JobCardCandidate'
 import { JobDetails } from '@/components/candidate/JobDetails'
 import { Footer } from '@/components/layout/Footer'
+import { Card } from '@/components/ui/Card'
 import { getJobs, type Job } from '@/lib/supabase/jobs'
 import { getUserAppliedJobIds } from '@/lib/supabase/applications'
 import { useAuth } from '@/contexts/AuthContext'
@@ -142,9 +143,9 @@ export default function CandidateDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="flex flex-1 h-[calc(100vh-12rem)] bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex flex-1 h-[calc(100vh-12rem)] bg-gradient-to-br from-gray-50 to-gray-100 p-6 gap-6">
         {/* Left Column - Job List */}
-        <div className="w-full lg:w-[40%] border-r border-gray-200 bg-white/80 backdrop-blur-sm overflow-y-auto shadow-lg">
+        <Card className="w-full lg:w-[40%] bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto flex flex-col">
           {/* Search and Filter Section */}
           <div className="p-6 border-b border-gray-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
@@ -269,12 +270,12 @@ export default function CandidateDashboard() {
               </div>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Right Column - Job Details */}
-        <div className="hidden lg:block flex-1 bg-gradient-to-br from-gray-50 to-white overflow-y-auto">
+        <Card className="hidden lg:block flex-1 bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto">
           <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
-        </div>
+        </Card>
       </div>
       <Footer />
     </div>
