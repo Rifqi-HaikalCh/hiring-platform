@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { JobCardCandidate } from '@/components/candidate/JobCardCandidate'
 import { JobDetails } from '@/components/candidate/JobDetails'
+import { Footer } from '@/components/layout/Footer'
 import { getJobs, type Job } from '@/lib/supabase/jobs'
 import { getUserAppliedJobIds } from '@/lib/supabase/applications'
 import { useAuth } from '@/contexts/AuthContext'
@@ -140,139 +141,142 @@ export default function CandidateDashboard() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Left Column - Job List */}
-      <div className="w-full lg:w-[40%] border-r border-gray-200 bg-white/80 backdrop-blur-sm overflow-y-auto shadow-lg">
-        {/* Search and Filter Section */}
-        <div className="p-6 border-b border-gray-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
+    <div className="flex flex-col min-h-screen">
+      <div className="flex flex-1 h-[calc(100vh-12rem)] bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Left Column - Job List */}
+        <div className="w-full lg:w-[40%] border-r border-gray-200 bg-white/80 backdrop-blur-sm overflow-y-auto shadow-lg">
+          {/* Search and Filter Section */}
+          <div className="p-6 border-b border-gray-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
 
-          {/* Search Bar */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              type="text"
-              placeholder="Search by title, company, or location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 py-2.5 rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 shadow-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Filter Toggle */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} found
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 rounded-lg transition-all ${showFilters ? 'bg-teal-50 border-teal-500 text-teal-700' : ''}`}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </Button>
-          </div>
-
-          {/* Filter Options */}
-          {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
-                <div className="flex flex-wrap gap-2">
-                  {jobTypes.map(type => (
-                    <button
-                      key={type}
-                      onClick={() => setFilterJobType(type)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                        filterJobType === type
-                          ? 'bg-teal-600 text-white shadow-md'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {type === 'all' ? 'All Types' : type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <div className="flex flex-wrap gap-2">
-                  {locations.slice(0, 6).map(location => (
-                    <button
-                      key={location}
-                      onClick={() => setFilterLocation(location)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                        filterLocation === location
-                          ? 'bg-teal-600 text-white shadow-md'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {location === 'all' ? 'All Locations' : location}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {(filterJobType !== 'all' || filterLocation !== 'all') && (
+            {/* Search Bar */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Input
+                type="text"
+                placeholder="Search by title, company, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 py-2.5 rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 shadow-sm"
+              />
+              {searchQuery && (
                 <button
-                  onClick={() => {
-                    setFilterJobType('all')
-                    setFilterLocation('all')
-                  }}
-                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  Clear all filters
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Job Cards */}
-        <div className="p-4 space-y-3">
-          {filteredJobs.length > 0 ? (
-            filteredJobs.map((job) => (
-              <JobCardCandidate
-                key={job.id}
-                job={job}
-                isActive={selectedJobId === job.id}
-                isApplied={appliedJobIds.includes(job.id)}
-                onClick={handleJobSelect}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No jobs match your filters.</p>
-              <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setFilterJobType('all')
-                  setFilterLocation('all')
-                }}
-                className="mt-4 text-teal-600 hover:text-teal-700 font-medium"
+            {/* Filter Toggle */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} found
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 rounded-lg transition-all ${showFilters ? 'bg-teal-50 border-teal-500 text-teal-700' : ''}`}
               >
-                Clear filters
-              </button>
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+              </Button>
             </div>
-          )}
+
+            {/* Filter Options */}
+            {showFilters && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {jobTypes.map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setFilterJobType(type)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                          filterJobType === type
+                            ? 'bg-teal-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {type === 'all' ? 'All Types' : type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <div className="flex flex-wrap gap-2">
+                    {locations.slice(0, 6).map(location => (
+                      <button
+                        key={location}
+                        onClick={() => setFilterLocation(location)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                          filterLocation === location
+                            ? 'bg-teal-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {location === 'all' ? 'All Locations' : location}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(filterJobType !== 'all' || filterLocation !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setFilterJobType('all')
+                      setFilterLocation('all')
+                    }}
+                    className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Job Cards */}
+          <div className="p-4 space-y-3">
+            {filteredJobs.length > 0 ? (
+              filteredJobs.map((job) => (
+                <JobCardCandidate
+                  key={job.id}
+                  job={job}
+                  isActive={selectedJobId === job.id}
+                  isApplied={appliedJobIds.includes(job.id)}
+                  onClick={handleJobSelect}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No jobs match your filters.</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setFilterJobType('all')
+                    setFilterLocation('all')
+                  }}
+                  className="mt-4 text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Job Details */}
+        <div className="hidden lg:block flex-1 bg-gradient-to-br from-gray-50 to-white overflow-y-auto">
+          <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
         </div>
       </div>
-
-      {/* Right Column - Job Details */}
-      <div className="hidden lg:block flex-1 bg-gradient-to-br from-gray-50 to-white overflow-y-auto">
-        <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
-      </div>
+      <Footer />
     </div>
   )
 }

@@ -55,6 +55,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 
@@ -446,16 +447,9 @@ export default function ManageCandidatesPage() {
       header: 'Status',
       cell: info => {
         const status = info.getValue()
-        const statusColors = {
-          pending: 'bg-yellow-100 text-yellow-800',
-          accepted: 'bg-green-100 text-green-800',
-          rejected: 'bg-red-100 text-red-800'
-        }
-        return (
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
-            {status}
-          </span>
-        )
+        // Map status to StatusBadge format
+        const badgeStatus = status === 'submitted' ? 'submitted' : status
+        return <StatusBadge status={badgeStatus as any} showIcon={false} />
       },
     }),
     columnHelper.accessor('applied_at', {
@@ -474,28 +468,40 @@ export default function ManageCandidatesPage() {
             {currentStatus !== 'accepted' && (
               <button
                 onClick={() => handleStatusChange(applicationId, 'accepted')}
-                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                title="Accept"
+                className="group relative p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-all hover:shadow-md"
+                title="Accept Candidate"
+                aria-label="Accept this candidate"
               >
                 <CheckCircle className="h-4 w-4" />
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Accept
+                </span>
               </button>
             )}
             {currentStatus !== 'rejected' && (
               <button
                 onClick={() => handleStatusChange(applicationId, 'rejected')}
-                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                title="Reject"
+                className="group relative p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:shadow-md"
+                title="Reject Candidate"
+                aria-label="Reject this candidate"
               >
                 <XCircle className="h-4 w-4" />
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Reject
+                </span>
               </button>
             )}
             {(currentStatus === 'accepted' || currentStatus === 'rejected') && currentStatus !== 'pending' && (
               <button
                 onClick={() => handleStatusChange(applicationId, 'pending')}
-                className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
+                className="group relative p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all hover:shadow-md"
                 title="Set to Pending"
+                aria-label="Set this candidate status to pending"
               >
                 <Clock className="h-4 w-4" />
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Pending
+                </span>
               </button>
             )}
           </div>
@@ -766,15 +772,27 @@ export default function ManageCandidatesPage() {
                             items={columnOrder.length > 0 ? columnOrder : headerGroup.headers.map(h => h.column.id)}
                             strategy={horizontalListSortingStrategy}
                           >
-                            {headerGroup.headers.map(header => (
+                            {headerGroup.headers.map(header => {
+                              const isSelect = header.column.id === 'select'
+                              const isFullName = header.column.id === 'full_name'
+                              const isActions = header.column.id === 'actions'
+
+                              return (
                               <th
                                 key={header.id}
-                                className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative"
+                                className={`px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative ${
+                                  isSelect ? 'sticky left-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50' : ''
+                                } ${
+                                  isFullName ? 'sticky left-[60px] z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50' : ''
+                                } ${
+                                  isActions ? 'sticky right-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-l border-gray-200/50' : ''
+                                }`}
                                 style={{ width: header.getSize() }}
                               >
                                 <DraggableHeader header={header} table={table} />
                               </th>
-                            ))}
+                              )
+                            })}
                           </SortableContext>
                         </tr>
                       ))}
@@ -783,18 +801,29 @@ export default function ManageCandidatesPage() {
                       {table.getRowModel().rows.map((row, index) => (
                         <tr
                           key={row.id}
-                          className="group relative transition-all duration-300 hover:bg-gradient-to-r hover:from-teal-50/40 hover:via-transparent hover:to-sky-50/40 magic-bento-row"
+                          className="group relative transition-all duration-200 hover:bg-teal-50/30"
                           style={{
                             animationDelay: `${index * 50}ms`
                           }}
                         >
-                          {row.getVisibleCells().map((cell, cellIndex) => (
+                          {row.getVisibleCells().map((cell, cellIndex) => {
+                            const isSelect = cell.column.id === 'select'
+                            const isFullName = cell.column.id === 'full_name'
+                            const isActions = cell.column.id === 'actions'
+
+                            return (
                             <td
                               key={cell.id}
-                              className={`px-6 py-5 text-sm text-gray-900 transition-all duration-300 group-hover:scale-[1.01] ${
-                                cellIndex === 0 ? 'rounded-l-xl relative' : 'relative'
+                              className={`px-6 py-5 text-sm text-gray-900 transition-colors duration-200 ${
+                                cellIndex === 0 ? 'rounded-l-xl' : ''
                               } ${
                                 cellIndex === row.getVisibleCells().length - 1 ? 'rounded-r-xl' : ''
+                              } ${
+                                isSelect ? 'sticky left-0 z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50' : ''
+                              } ${
+                                isFullName ? 'sticky left-[60px] z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50' : ''
+                              } ${
+                                isActions ? 'sticky right-0 z-10 bg-white group-hover:bg-teal-50/30 border-l border-gray-200/50' : ''
                               }`}
                               style={{ width: cell.column.getSize() }}
                             >
@@ -819,7 +848,8 @@ export default function ManageCandidatesPage() {
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                               </div>
                             </td>
-                          ))}
+                            )
+                          })}
                         </tr>
                       ))}
                     </tbody>

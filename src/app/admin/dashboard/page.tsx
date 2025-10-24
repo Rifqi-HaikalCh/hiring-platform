@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { JobCardAdmin } from '@/components/admin/JobCardAdmin'
 import { CreateJobModal } from '@/components/modals/CreateJobModal'
+import { Footer } from '@/components/layout/Footer'
 import { getJobs, updateJobStatus, deleteJob, type Job } from '@/lib/supabase/jobs'
 import { toast } from 'react-hot-toast'
 import { gsap } from 'gsap'
@@ -60,7 +61,7 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
       isHoveredRef.current = true
 
       // Create particles
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 8; i++) {
         setTimeout(() => {
           if (!isHoveredRef.current || !cardRef.current) return
 
@@ -68,7 +69,7 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
           particle.className = 'absolute w-1 h-1 rounded-full pointer-events-none'
           particle.style.cssText = `
             background: rgba(20, 184, 166, 0.8);
-            box-shadow: 0 0 8px rgba(20, 184, 166, 0.6);
+            box-shadow: 0 0 6px rgba(20, 184, 166, 0.6);
             left: ${Math.random() * 100}%;
             top: ${Math.random() * 100}%;
             z-index: 10;
@@ -83,8 +84,8 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
           )
 
           gsap.to(particle, {
-            x: (Math.random() - 0.5) * 100,
-            y: (Math.random() - 0.5) * 100,
+            x: (Math.random() - 0.5) * 80,
+            y: (Math.random() - 0.5) * 80,
             rotation: Math.random() * 360,
             duration: 2 + Math.random() * 2,
             ease: 'none',
@@ -93,13 +94,13 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
           })
 
           gsap.to(particle, {
-            opacity: 0.4,
+            opacity: 0.3,
             duration: 1.5,
             ease: 'power2.inOut',
             repeat: -1,
             yoyo: true
           })
-        }, i * 80)
+        }, i * 100)
       }
     }
 
@@ -136,8 +137,8 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
       const centerY = rect.height / 2
 
       // Tilt effect
-      const rotateX = ((y - centerY) / centerY) * -10
-      const rotateY = ((x - centerX) / centerX) * 10
+      const rotateX = ((y - centerY) / centerY) * -8
+      const rotateY = ((x - centerX) / centerX) * 8
 
       gsap.to(card, {
         rotateX,
@@ -148,8 +149,8 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
       })
 
       // Magnetism
-      const magnetX = (x - centerX) * 0.05
-      const magnetY = (y - centerY) * 0.05
+      const magnetX = (x - centerX) * 0.03
+      const magnetY = (y - centerY) * 0.03
 
       gsap.to(card, {
         x: magnetX,
@@ -225,7 +226,7 @@ function CreateJobCard({ onClick }: { onClick: () => void }) {
         <div
           className="absolute inset-0 rounded-lg pointer-events-none border-glow-effect"
           style={{
-            background: `radial-gradient(400px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.2), transparent 60%)`,
+            background: `radial-gradient(300px circle at var(--glow-x) var(--glow-y), rgba(20, 184, 166, 0.2), transparent 60%)`,
             opacity: 0
           }}
         />
@@ -414,8 +415,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 px-4 sm:px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2">
           <div className="mb-6">
@@ -587,14 +589,16 @@ export default function AdminDashboard() {
             </div>
           </Card>
         </div>
-      </div>
+        </div>
 
-      {/* Create Job Modal */}
-      <CreateJobModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onJobCreated={handleJobCreated}
-      />
+        {/* Create Job Modal */}
+        <CreateJobModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onJobCreated={handleJobCreated}
+        />
+      </div>
+      <Footer />
     </div>
   )
 }
