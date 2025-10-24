@@ -23,6 +23,7 @@ interface JobFormData {
   company_name: string
   company_logo: string
   location: string
+  department: string
   required_skills: string
   candidates_needed: number
   min_salary: string
@@ -160,6 +161,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
       company_name: '',
       company_logo: '',
       location: '',
+      department: '',
       required_skills: '',
       candidates_needed: 1,
       min_salary: '',
@@ -290,6 +292,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         job_description: data.job_description?.trim(),
         company_name: data.company_name?.trim(),
         location: data.location?.trim(),
+        department: data.department?.trim() || null,
         company_logo: logoUrl,
         required_skills: skillsArray,
         candidates_needed: parseInt(data.candidates_needed.toString()) || 1,
@@ -503,6 +506,18 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                           {errors.location && (
                             <p className="text-sm text-red-600 mt-1 animate-pulse">{errors.location.message}</p>
                           )}
+                        </div>
+
+                        <div className="group">
+                          <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
+                            Department (Optional)
+                          </label>
+                          <Input
+                            id="department"
+                            placeholder="e.g., Engineering, Marketing, Sales"
+                            {...register('department')}
+                            className="transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
+                          />
                         </div>
 
                         <div className="group">

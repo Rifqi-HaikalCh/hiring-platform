@@ -20,6 +20,7 @@ interface Job {
   companyName?: string
   companyLogo?: string
   location?: string
+  department?: string
 }
 
 interface JobCardAdminProps {
@@ -364,6 +365,11 @@ export function JobCardAdmin({ job, onManage, onEdit, onToggleStatus, onDelete }
                 {job.location && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
                     {job.location}
+                  </span>
+                )}
+                {job.department && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                    {job.department}
                   </span>
                 )}
               </div>

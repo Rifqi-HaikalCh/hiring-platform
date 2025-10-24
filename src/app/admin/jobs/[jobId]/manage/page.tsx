@@ -14,8 +14,22 @@ import {
   ColumnResizeMode,
   ColumnOrderState,
 } from '@tanstack/react-table'
-import { DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   ChevronLeft,
   Edit3,
@@ -29,7 +43,8 @@ import {
   MoreHorizontal,
   ChevronRight,
   X,
-  Save
+  Save,
+  GripVertical
 } from 'lucide-react'
 
 // Components
@@ -60,23 +75,35 @@ interface CandidateRow extends CandidateData {
 // Column helper
 const columnHelper = createColumnHelper<CandidateRow>()
 
-// Draggable Header component
+// Draggable Header component using @dnd-kit
 function DraggableHeader({ header, table }: any) {
-  const { getState, setColumnOrder } = table
-  const { columnOrder } = getState()
   const { column } = header
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: column.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
 
   return (
-    <div
-      className="flex items-center space-x-2 cursor-pointer select-none"
-      onClick={header.column.getToggleSortingHandler()}
-    >
-      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-      <div className="flex flex-col">
-        {{
-          asc: <ChevronUp className="h-4 w-4" />,
-          desc: <ChevronDown className="h-4 w-4" />,
-        }[header.column.getIsSorted() as string] ?? <ChevronsUpDown className="h-4 w-4 text-gray-400" />}
+    <div ref={setNodeRef} style={style} className="flex items-center space-x-2 select-none">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hover:bg-gray-200/50 p-1 rounded">
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
+      <div
+        className="flex items-center space-x-2 cursor-pointer flex-1"
+        onClick={header.column.getToggleSortingHandler()}
+      >
+        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+        <div className="flex flex-col">
+          {{
+            asc: <ChevronUp className="h-4 w-4" />,
+            desc: <ChevronDown className="h-4 w-4" />,
+          }[header.column.getIsSorted() as string] ?? <ChevronsUpDown className="h-4 w-4 text-gray-400" />}
+        </div>
       </div>
       <div
         className="cursor-col-resize w-1 h-6 bg-gray-300 hover:bg-gray-400"
@@ -103,6 +130,7 @@ function EditJobModal({
     job_title: '',
     job_type: '',
     job_description: '',
+    department: '',
     candidates_needed: 1,
     min_salary: 0,
     max_salary: 0,
@@ -115,6 +143,7 @@ function EditJobModal({
         job_title: job.job_title || '',
         job_type: job.job_type || '',
         job_description: job.job_description || '',
+        department: job.department || '',
         candidates_needed: job.candidates_needed || 1,
         min_salary: job.min_salary || 0,
         max_salary: job.max_salary || 0,
@@ -229,6 +258,17 @@ function EditJobModal({
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Department (Optional)
+                    </label>
+                    <Input
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                      placeholder="e.g., Engineering, Marketing, Sales"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -305,6 +345,12 @@ export default function ManageCandidatesPage() {
   const [globalFilter, setGlobalFilter] = useState('')
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([])
   const [showEditModal, setShowEditModal] = useState(false)
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  )
 
   // Define table columns
   const columns = useMemo(() => [
@@ -503,6 +549,19 @@ export default function ManageCandidatesPage() {
     }
   }
 
+  // Handle column drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active && over && active.id !== over.id) {
+      const oldIndex = columnOrder.indexOf(active.id as string)
+      const newIndex = columnOrder.indexOf(over.id as string)
+
+      const newColumnOrder = arrayMove(columnOrder, oldIndex, newIndex)
+      setColumnOrder(newColumnOrder)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -525,7 +584,11 @@ export default function ManageCandidatesPage() {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
       <div className="container mx-auto px-4 py-8">
         {/* Header with Breadcrumbs */}
         <div className="mb-6">
@@ -630,15 +693,20 @@ export default function ManageCandidatesPage() {
                     <thead>
                       {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id} className="border-b border-gray-200/50 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80">
-                          {headerGroup.headers.map(header => (
-                            <th
-                              key={header.id}
-                              className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative"
-                              style={{ width: header.getSize() }}
-                            >
-                              <DraggableHeader header={header} table={table} />
-                            </th>
-                          ))}
+                          <SortableContext
+                            items={columnOrder.length > 0 ? columnOrder : headerGroup.headers.map(h => h.column.id)}
+                            strategy={horizontalListSortingStrategy}
+                          >
+                            {headerGroup.headers.map(header => (
+                              <th
+                                key={header.id}
+                                className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative"
+                                style={{ width: header.getSize() }}
+                              >
+                                <DraggableHeader header={header} table={table} />
+                              </th>
+                            ))}
+                          </SortableContext>
                         </tr>
                       ))}
                     </thead>
@@ -742,6 +810,6 @@ export default function ManageCandidatesPage() {
           onJobUpdated={setJob}
         />
       </div>
-    </DndProvider>
+    </DndContext>
   )
 }

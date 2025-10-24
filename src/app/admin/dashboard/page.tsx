@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Briefcase, TrendingUp, Clock } from 'lucide-react'
+import { Search, Plus, Briefcase, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -23,6 +23,7 @@ const transformJobForAdmin = (job: any): {
   companyName?: string
   companyLogo?: string
   location?: string
+  department?: string
 } => ({
   id: job.id,
   title: job.job_title || job.title,
@@ -40,7 +41,8 @@ const transformJobForAdmin = (job: any): {
   ...(job.company_name && { companyName: job.company_name }),
   ...((job.company || job.company_name === undefined) && job.company && { companyName: job.company }),
   ...(job.company_logo && { companyLogo: job.company_logo }),
-  ...(job.location && { location: job.location })
+  ...(job.location && { location: job.location }),
+  ...(job.department && { department: job.department })
 })
 
 // Create Job Card dengan Magic Bento Effects
@@ -264,6 +266,7 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ReturnType<typeof transformJobForAdmin>; direction: 'ascending' | 'descending' } | null>(null)
 
   useEffect(() => {
     loadJobs()
@@ -366,6 +369,44 @@ export default function AdminDashboard() {
     return matchesSearch
   })
 
+  const sortedJobs = useMemo(() => {
+    let sortableJobs = [...filteredJobs]
+    if (sortConfig !== null) {
+      sortableJobs.sort((a, b) => {
+        const aValue = a[sortConfig.key]
+        const bValue = b[sortConfig.key]
+
+        // Handle nested salaryRange object
+        if (sortConfig.key === 'salaryRange') {
+          const aSalary = (a.salaryRange?.min || 0) + (a.salaryRange?.max || 0)
+          const bSalary = (b.salaryRange?.min || 0) + (b.salaryRange?.max || 0)
+          return sortConfig.direction === 'ascending' ? aSalary - bSalary : bSalary - aSalary
+        }
+
+        // Handle undefined/null values
+        if (aValue === undefined || aValue === null) return 1
+        if (bValue === undefined || bValue === null) return -1
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1
+        }
+        return 0
+      })
+    }
+    return sortableJobs
+  }, [filteredJobs, sortConfig])
+
+  const handleSort = (key: keyof ReturnType<typeof transformJobForAdmin>) => {
+    let direction: 'ascending' | 'descending' = 'ascending'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending'
+    }
+    setSortConfig({ key, direction })
+  }
+
   return (
     <div className="px-4 sm:px-6 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -387,7 +428,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Filters */}
-            <div className="flex space-x-2 mb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-6">
               <Button
                 variant={activeFilter === 'active' ? 'primary' : 'outline'}
                 size="sm"
@@ -406,6 +447,62 @@ export default function AdminDashboard() {
                 <Clock className="h-4 w-4 mr-1" />
                 Recent
               </Button>
+
+              {/* Sorting */}
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-sm text-gray-600">Sort by:</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant={sortConfig?.key === 'title' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleSort('title')}
+                    className="transition-all duration-300 hover:scale-105"
+                  >
+                    Title
+                    {sortConfig?.key === 'title' && (
+                      sortConfig.direction === 'ascending'
+                        ? <ArrowUp className="h-3 w-3 ml-1" />
+                        : <ArrowDown className="h-3 w-3 ml-1" />
+                    )}
+                  </Button>
+                  <Button
+                    variant={sortConfig?.key === 'startDate' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleSort('startDate')}
+                    className="transition-all duration-300 hover:scale-105"
+                  >
+                    Date
+                    {sortConfig?.key === 'startDate' && (
+                      sortConfig.direction === 'ascending'
+                        ? <ArrowUp className="h-3 w-3 ml-1" />
+                        : <ArrowDown className="h-3 w-3 ml-1" />
+                    )}
+                  </Button>
+                  <Button
+                    variant={sortConfig?.key === 'salaryRange' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => handleSort('salaryRange')}
+                    className="transition-all duration-300 hover:scale-105"
+                  >
+                    Salary
+                    {sortConfig?.key === 'salaryRange' && (
+                      sortConfig.direction === 'ascending'
+                        ? <ArrowUp className="h-3 w-3 ml-1" />
+                        : <ArrowDown className="h-3 w-3 ml-1" />
+                    )}
+                  </Button>
+                  {sortConfig && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSortConfig(null)}
+                      className="transition-all duration-300 hover:scale-105"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -416,8 +513,8 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredJobs.length > 0 ? (
-                filteredJobs.map((job) => (
+              {sortedJobs.length > 0 ? (
+                sortedJobs.map((job) => (
                   <JobCardAdmin
                     key={job.id}
                     job={job}
