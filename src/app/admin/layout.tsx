@@ -10,12 +10,16 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Footer } from '@/components/layout/Footer'
+import { PageTransition } from '@/components/ui/PageTransition'
+import { LogoutConfirmModal } from '@/components/modals/LogoutConfirmModal'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
+
+const logoutItem = { name: 'Logout', icon: LogOut, isLogout: true }
 
 export default function AdminLayout({
   children,
@@ -27,13 +31,18 @@ export default function AdminLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const onSignOut = async () => {
+    setIsLoggingOut(true)
     const { error } = await handleSignOut()
     if (error) {
       toast.error('Error signing out')
+      setIsLoggingOut(false)
     } else {
       toast.success('Signed out successfully')
+      setShowLogoutModal(false)
       router.push('/auth')
     }
   }
@@ -108,33 +117,43 @@ export default function AdminLayout({
                 </Link>
               )
             })}
+
+            {/* Logout Button */}
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className={cn(
+                'group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50',
+                isSidebarCollapsed && 'justify-center'
+              )}
+              title={isSidebarCollapsed ? logoutItem.name : undefined}
+            >
+              <logoutItem.icon
+                className={cn(
+                  'h-5 w-5 flex-shrink-0 text-red-500 group-hover:text-red-600',
+                  !isSidebarCollapsed && 'mr-3'
+                )}
+              />
+              {!isSidebarCollapsed && logoutItem.name}
+            </button>
           </nav>
 
           {/* User section */}
           <div className="flex-shrink-0 border-t border-gray-200 p-4">
             {isSidebarCollapsed ? (
-              <div className="flex flex-col items-center space-y-3">
+              <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
                   <User className="h-4 w-4 text-teal-700" />
                 </div>
-                <Button variant="ghost" size="sm" onClick={onSignOut} className="p-2">
-                  <LogOut className="h-4 w-4 text-gray-500" />
-                </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
-                    <User className="h-4 w-4 text-teal-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
-                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                  </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
+                  <User className="h-4 w-4 text-teal-700" />
                 </div>
-                <Button variant="ghost" size="sm" onClick={onSignOut} className="p-2">
-                  <LogOut className="h-4 w-4 text-gray-500" />
-                </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
               </div>
             )}
           </div>
@@ -196,23 +215,30 @@ export default function AdminLayout({
                       </Link>
                     )
                   })}
+
+                  {/* Logout Button - Mobile */}
+                  <button
+                    onClick={() => {
+                      setSidebarOpen(false)
+                      setShowLogoutModal(true)
+                    }}
+                    className="group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50"
+                  >
+                    <logoutItem.icon className="mr-3 h-5 w-5 flex-shrink-0 text-red-500 group-hover:text-red-600" />
+                    {logoutItem.name}
+                  </button>
                 </nav>
               </div>
 
               <div className="flex-shrink-0 border-t border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
-                      <User className="h-4 w-4 text-teal-700" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
-                      <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                    </div>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-teal-100">
+                    <User className="h-4 w-4 text-teal-700" />
                   </div>
-                  <Button variant="ghost" size="sm" onClick={onSignOut} className="p-2">
-                    <LogOut className="h-4 w-4 text-gray-500" />
-                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
+                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -241,12 +267,22 @@ export default function AdminLayout({
 
         {/* Page content */}
         <main className="flex-1">
-          <div className="py-6 px-4 sm:px-6 lg:px-8">
-            {children}
-          </div>
+          <PageTransition>
+            <div className="py-6 px-4 sm:px-6 lg:px-8">
+              {children}
+            </div>
+          </PageTransition>
         </main>
       </div>
       <Footer isSidebarCollapsed={isSidebarCollapsed} />
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={onSignOut}
+        loading={isLoggingOut}
+      />
     </div>
   )
 }

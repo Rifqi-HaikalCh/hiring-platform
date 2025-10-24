@@ -3,11 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { X, Camera, Hand } from 'lucide-react'
+import { X, Camera, Hand, Video } from 'lucide-react'
 import Webcam from 'react-webcam'
-import * as tf from '@tensorflow/tfjs'
-import * as handpose from '@tensorflow-models/handpose'
-import '@tensorflow/tfjs-backend-webgl'
+import { HandLandmarker, FilesetResolver, HandLandmarkerResult } from '@mediapipe/tasks-vision'
 
 interface WebcamGestureModalProps {
   isOpen: boolean
@@ -22,11 +20,13 @@ const POSE_INSTRUCTIONS = [
   { id: 3, emoji: '🤟', name: 'Three Fingers', description: 'Tunjukkan tiga jari (rock sign)' }
 ]
 
+type PoseType = 'POSE_1' | 'POSE_2' | 'POSE_3' | 'UNDETECTED'
+
 export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGestureModalProps) {
   const webcamRef = useRef<Webcam>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number | null>(null)
-  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastVideoTimeRef = useRef(-1)
 
   // Helper function to safely get pose instruction
   const getCurrentPoseInstruction = useCallback((pose: number) => {
@@ -35,7 +35,7 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
   }, [])
 
   // States
-  const [model, setModel] = useState<handpose.HandPose | null>(null)
+  const [handLandmarker, setHandLandmarker] = useState<HandLandmarker | null>(null)
   const [isModelLoading, setIsModelLoading] = useState(true)
   const [currentPose, setCurrentPose] = useState(1)
   const [poseDetected, setPoseDetected] = useState(false)
@@ -44,18 +44,39 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
   const [isCapturing, setIsCapturing] = useState(false)
   const [feedback, setFeedback] = useState('')
 
-  // Load TensorFlow model
+  // Camera selection states
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined)
+
+  // Load MediaPipe HandLandmarker model
   useEffect(() => {
     const loadModel = async () => {
       try {
         setIsModelLoading(true)
-        await tf.ready()
-        const loadedModel = await handpose.load()
-        setModel(loadedModel)
+
+        // Initialize MediaPipe FilesetResolver
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+        )
+
+        // Create HandLandmarker with VIDEO running mode
+        const landmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'GPU'
+          },
+          runningMode: 'VIDEO',
+          numHands: 1,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        })
+
+        setHandLandmarker(landmarker)
         setIsModelLoading(false)
-        console.log('HandPose model loaded successfully')
+        console.log('HandLandmarker model loaded successfully')
       } catch (error) {
-        console.error('Error loading model:', error)
+        console.error('Error loading HandLandmarker:', error)
         setIsModelLoading(false)
       }
     }
@@ -63,99 +84,265 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
     if (isOpen) {
       loadModel()
     }
+
+    return () => {
+      // Cleanup
+      if (handLandmarker) {
+        handLandmarker.close()
+      }
+    }
+  }, [isOpen])
+
+  // Enumerate video devices for camera selection
+  useEffect(() => {
+    const getVideoDevices = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoInputs = devices.filter(device => device.kind === 'videoinput')
+        setVideoDevices(videoInputs)
+
+        // Set default device if available
+        if (videoInputs.length > 0 && !selectedDeviceId) {
+          setSelectedDeviceId(videoInputs[0].deviceId)
+        }
+      } catch (error) {
+        console.error('Error enumerating devices:', error)
+      }
+    }
+
+    if (isOpen) {
+      getVideoDevices()
+    }
   }, [isOpen])
 
   // Fungsi untuk mendeteksi gesture berdasarkan landmarks
-  const detectGesture = useCallback((landmarks: number[][]) => {
-    if (!landmarks || landmarks.length === 0) return 0
+  const classifyGesture = useCallback((landmarks: any[]): PoseType => {
+    if (!landmarks || landmarks.length === 0) return 'UNDETECTED'
 
     // Landmark indices untuk jari-jari
     const fingerTips = [8, 12, 16, 20] // index, middle, ring, pinky tips
     const fingerPips = [6, 10, 14, 18] // index, middle, ring, pinky PIPs
     const thumbTip = 4
-    const thumbPip = 3
+    const thumbIp = 3
 
     let extendedFingers = 0
 
     // Check thumb (berbeda karena orientasi horizontal)
-    if (landmarks[thumbTip][0] > landmarks[thumbPip][0]) {
+    // Thumb dianggap extended jika tip lebih ke kanan dari IP joint
+    if (landmarks[thumbTip].x > landmarks[thumbIp].x) {
       extendedFingers++
     }
 
     // Check other fingers (vertical orientation)
+    // Finger dianggap extended jika tip lebih tinggi (y lebih kecil) dari PIP
     for (let i = 0; i < fingerTips.length; i++) {
-      if (landmarks[fingerTips[i]][1] < landmarks[fingerPips[i]][1]) {
+      if (landmarks[fingerTips[i]].y < landmarks[fingerPips[i]].y) {
         extendedFingers++
       }
     }
 
-    return extendedFingers
+    // Map to pose types
+    if (extendedFingers === 1) return 'POSE_1'
+    if (extendedFingers === 2) return 'POSE_2'
+    if (extendedFingers === 3) return 'POSE_3'
+
+    return 'UNDETECTED'
   }, [])
 
-  // Deteksi hand pose secara real-time
-  const detectHands = useCallback(async () => {
-    if (!model || !webcamRef.current?.video || isCapturing) return
+  // Calculate bounding box from landmarks
+  const getBoundingBox = useCallback((landmarks: any[], canvasWidth: number, canvasHeight: number) => {
+    let minX = 1, minY = 1, maxX = 0, maxY = 0
+
+    landmarks.forEach((landmark: any) => {
+      minX = Math.min(minX, landmark.x)
+      minY = Math.min(minY, landmark.y)
+      maxX = Math.max(maxX, landmark.x)
+      maxY = Math.max(maxY, landmark.y)
+    })
+
+    // Add padding (10%)
+    const padding = 0.1
+    const width = maxX - minX
+    const height = maxY - minY
+
+    minX = Math.max(0, minX - width * padding)
+    minY = Math.max(0, minY - height * padding)
+    maxX = Math.min(1, maxX + width * padding)
+    maxY = Math.min(1, maxY + height * padding)
+
+    return {
+      x: minX * canvasWidth,
+      y: minY * canvasHeight,
+      width: (maxX - minX) * canvasWidth,
+      height: (maxY - minY) * canvasHeight
+    }
+  }, [])
+
+  // Draw visualization on canvas
+  const drawVisualization = useCallback((
+    ctx: CanvasRenderingContext2D,
+    landmarks: any[],
+    classifiedPose: PoseType,
+    canvasWidth: number,
+    canvasHeight: number
+  ) => {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+
+    if (landmarks && landmarks.length > 0) {
+      // Calculate bounding box
+      const bbox = getBoundingBox(landmarks, canvasWidth, canvasHeight)
+
+      // Determine color based on pose match
+      const expectedPose = `POSE_${currentPose}` as PoseType
+      const isMatch = classifiedPose === expectedPose
+      const boxColor = isMatch ? '#10b981' : '#ef4444' // green : red
+      const bgColor = isMatch ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+
+      // Draw bounding box
+      ctx.strokeStyle = boxColor
+      ctx.lineWidth = 4
+      ctx.strokeRect(bbox.x, bbox.y, bbox.width, bbox.height)
+
+      // Draw semi-transparent fill
+      ctx.fillStyle = bgColor
+      ctx.fillRect(bbox.x, bbox.y, bbox.width, bbox.height)
+
+      // Draw label
+      const labelText = classifiedPose === 'UNDETECTED' ? 'Undetected' : classifiedPose.replace('_', ' ')
+      const labelPadding = 8
+      const fontSize = 18
+      ctx.font = `bold ${fontSize}px Arial`
+      const textMetrics = ctx.measureText(labelText)
+      const textWidth = textMetrics.width
+      const textHeight = fontSize
+
+      // Label background
+      ctx.fillStyle = boxColor
+      ctx.fillRect(
+        bbox.x,
+        bbox.y - textHeight - labelPadding * 2,
+        textWidth + labelPadding * 2,
+        textHeight + labelPadding * 2
+      )
+
+      // Label text
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(
+        labelText,
+        bbox.x + labelPadding,
+        bbox.y - labelPadding
+      )
+    }
+  }, [currentPose, getBoundingBox])
+
+  // Detection loop using requestAnimationFrame
+  const predictWebcam = useCallback(async () => {
+    if (!handLandmarker || !webcamRef.current?.video || isCapturing) {
+      if (!isCapturing) {
+        animationRef.current = requestAnimationFrame(predictWebcam)
+      }
+      return
+    }
 
     const video = webcamRef.current.video
-    if (video.readyState !== 4) return
+    const canvas = canvasRef.current
+
+    if (video.readyState !== 4 || !canvas) {
+      animationRef.current = requestAnimationFrame(predictWebcam)
+      return
+    }
+
+    // Ensure canvas dimensions match video
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+    }
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      animationRef.current = requestAnimationFrame(predictWebcam)
+      return
+    }
 
     try {
-      const predictions = await model.estimateHands(video)
+      // Get current video time
+      const nowInMs = Date.now()
 
-      if (predictions.length > 0) {
-        setHandDetected(true)
-        const landmarks = predictions[0].landmarks
-        const gestureCount = detectGesture(landmarks)
+      // Only process if this is a new frame
+      if (video.currentTime !== lastVideoTimeRef.current) {
+        lastVideoTimeRef.current = video.currentTime
 
-        // Check if gesture matches current required pose
-        if (gestureCount === currentPose) {
-          if (!poseDetected) {
-            setPoseDetected(true)
-            setFeedback(`Pose ${currentPose} detected! Hold position...`)
+        // Detect hand landmarks
+        const results: HandLandmarkerResult = handLandmarker.detectForVideo(video, nowInMs)
 
-            // Delay before moving to next pose
-            setTimeout(() => {
-              if (currentPose < 3) {
-                setCurrentPose(prev => prev + 1)
-                setPoseDetected(false)
-                setFeedback('')
-              } else {
-                // All poses completed, start countdown
-                startCountdown()
-              }
-            }, 1000)
+        if (results.landmarks && results.landmarks.length > 0) {
+          setHandDetected(true)
+          const landmarks = results.landmarks[0]
+          const classifiedPose = classifyGesture(landmarks)
+
+          // Draw visualization
+          drawVisualization(ctx, landmarks, classifiedPose, canvas.width, canvas.height)
+
+          // Check if gesture matches current required pose
+          const expectedPose = `POSE_${currentPose}` as PoseType
+
+          if (classifiedPose === expectedPose) {
+            if (!poseDetected) {
+              setPoseDetected(true)
+              setFeedback(`Pose ${currentPose} detected! Hold position...`)
+
+              // Delay before moving to next pose
+              setTimeout(() => {
+                if (currentPose < 3) {
+                  setCurrentPose(prev => prev + 1)
+                  setPoseDetected(false)
+                  setFeedback('')
+                } else {
+                  // All poses completed, start countdown
+                  startCountdown()
+                }
+              }, 1000)
+            }
+          } else {
+            setPoseDetected(false)
+            if (currentPose === 1) {
+              setFeedback('Show one finger (index finger)')
+            } else if (currentPose === 2) {
+              setFeedback('Show two fingers (peace sign)')
+            } else if (currentPose === 3) {
+              setFeedback('Show three fingers (rock sign)')
+            }
           }
         } else {
-          setPoseDetected(false)
-          if (currentPose === 1) {
-            setFeedback('Show one finger (index finger)')
-          } else if (currentPose === 2) {
-            setFeedback('Show two fingers (peace sign)')
-          } else if (currentPose === 3) {
-            setFeedback('Show three fingers (rock sign)')
-          }
+          setHandDetected(false)
+          setFeedback('Please show your hand to the camera')
+          // Clear canvas when no hand detected
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
         }
-      } else {
-        setHandDetected(false)
-        setFeedback('Please show your hand to the camera')
       }
     } catch (error) {
       console.error('Hand detection error:', error)
     }
-  }, [model, currentPose, poseDetected, isCapturing, detectGesture])
 
-  // Start detection when modal opens and model is ready
+    // Continue the loop
+    animationRef.current = requestAnimationFrame(predictWebcam)
+  }, [handLandmarker, currentPose, poseDetected, isCapturing, classifyGesture, drawVisualization])
+
+  // Start detection loop when model is ready
   useEffect(() => {
-    if (isOpen && model && !isModelLoading) {
-      detectionIntervalRef.current = setInterval(detectHands, 100) // 10 FPS
+    if (isOpen && handLandmarker && !isModelLoading && webcamRef.current?.video) {
+      // Start the detection loop
+      animationRef.current = requestAnimationFrame(predictWebcam)
+
       return () => {
-        if (detectionIntervalRef.current) {
-          clearInterval(detectionIntervalRef.current)
-          detectionIntervalRef.current = null
+        if (animationRef.current !== null) {
+          cancelAnimationFrame(animationRef.current)
+          animationRef.current = null
         }
       }
     }
-  }, [isOpen, model, isModelLoading, detectHands])
+  }, [isOpen, handLandmarker, isModelLoading, predictWebcam])
 
   // Countdown and capture
   const startCountdown = useCallback(() => {
@@ -188,11 +375,9 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
 
   const handleClose = useCallback(() => {
     // Cleanup
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current)
-    }
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
     }
 
     // Reset states
@@ -202,6 +387,7 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
     setHandDetected(false)
     setIsCapturing(false)
     setFeedback('')
+    lastVideoTimeRef.current = -1
 
     onClose()
   }, [onClose])
@@ -276,6 +462,30 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
                     </div>
                   ) : (
                     <div className="space-y-6">
+                    {/* Camera Selection */}
+                    {videoDevices.length > 1 && (
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <Video className="h-5 w-5 text-gray-600" />
+                          <label htmlFor="camera-select" className="text-sm font-medium text-gray-700">
+                            Select Camera:
+                          </label>
+                          <select
+                            id="camera-select"
+                            value={selectedDeviceId || ''}
+                            onChange={(e) => setSelectedDeviceId(e.target.value)}
+                            className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                          >
+                            {videoDevices.map((device, index) => (
+                              <option key={device.deviceId} value={device.deviceId}>
+                                {device.label || `Camera ${index + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Pose Instructions */}
                     <div className="bg-teal-50 p-5 rounded-xl border border-teal-200">
                       <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
@@ -303,7 +513,7 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
                     <div className="relative">
                       {/* Countdown Overlay */}
                       {countdown > 0 && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-lg">
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 rounded-lg">
                           <div className="text-white text-6xl font-bold animate-pulse">
                             {countdown}
                           </div>
@@ -314,7 +524,7 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
                       <div className="absolute top-4 left-4 z-10">
                         <div className={`flex items-center space-x-2 px-3 py-2 rounded-full ${
                           handDetected ? 'bg-green-500' : 'bg-red-500'
-                        } text-white text-sm`}>
+                        } text-white text-sm shadow-lg`}>
                           <Hand className="h-4 w-4" />
                           <span>{handDetected ? 'Hand Detected' : 'No Hand'}</span>
                         </div>
@@ -322,12 +532,12 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
 
                       {/* Current Pose Indicator */}
                       <div className="absolute top-4 right-4 z-10">
-                        <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+                        <div className="bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm shadow-lg">
                           Pose {currentPose}/3: {getCurrentPoseInstruction(currentPose).emoji}
                         </div>
                       </div>
 
-                      {/* Webcam */}
+                      {/* Webcam with Canvas Overlay */}
                       <div className="relative rounded-lg overflow-hidden bg-gray-100">
                         <Webcam
                           ref={webcamRef}
@@ -338,14 +548,18 @@ export function WebcamGestureModal({ isOpen, onClose, onCapture }: WebcamGesture
                           videoConstraints={{
                             width: 800,
                             height: 600,
-                            facingMode: "user"
+                            facingMode: "user",
+                            deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined
                           }}
                           className="w-full h-auto"
                         />
+                        {/* Canvas Overlay for Visual Feedback */}
+                        <canvas
+                          ref={canvasRef}
+                          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                          style={{ mixBlendMode: 'normal' }}
+                        />
                       </div>
-
-                      {/* Hidden canvas for processing */}
-                      <canvas ref={canvasRef} style={{ display: 'none' }} />
                     </div>
 
                     {/* Feedback */}

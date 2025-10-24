@@ -398,7 +398,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
             >
               <Dialog.Panel className="w-full max-w-2xl max-h-[90vh] transform rounded-3xl bg-white/70 backdrop-blur-xl text-left align-middle shadow-2xl shadow-black/10 transition-all overflow-hidden flex flex-col border border-white/20">
                 {/* Header with gradient */}
-                <div className="relative flex items-center justify-between p-6 bg-gradient-to-r from-teal-600 via-teal-500 to-cyan-600 text-white flex-shrink-0 overflow-hidden">
+                <div className="relative flex items-center justify-between p-4 sm:p-6 bg-gradient-to-r from-teal-600 via-teal-500 to-cyan-600 text-white flex-shrink-0 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
                   <div className="relative flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -423,9 +423,9 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
 
                 {/* Scrollable Content */}
                 <div ref={formRef} className="flex-1 overflow-y-auto custom-scrollbar">
-                  <form id="job-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-8">
+                  <form id="job-form" onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-6 sm:space-y-8">
                     {/* Section 1: Job Details */}
-                    <div className="form-section space-y-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
+                    <div className="form-section space-y-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
                           <Briefcase className="h-5 w-5 text-white" />
@@ -625,7 +625,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                     </div>
 
                     {/* Section 2: Salary */}
-                    <div className="form-section space-y-4 p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl shadow-lg border border-teal-100">
+                    <div className="form-section space-y-4 p-4 sm:p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl shadow-lg border border-teal-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
                           <DollarSign className="h-5 w-5 text-white" />
@@ -677,7 +677,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                     </div>
 
                     {/* Section 3: Profile Requirements */}
-                    <div className="form-section space-y-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
+                    <div className="form-section space-y-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
                           <Sparkles className="h-5 w-5 text-white" />
@@ -707,7 +707,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-gray-200 p-6 flex-shrink-0 bg-gradient-to-r from-gray-50 to-white">
+                <div className="border-t border-gray-200 p-4 sm:p-6 flex-shrink-0 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex justify-end gap-3">
                     <Button
                       type="button"

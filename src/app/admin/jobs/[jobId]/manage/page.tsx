@@ -510,7 +510,7 @@ export default function ManageCandidatesPage() {
                       )}
                     </Menu.Item>
                   )}
-                  {(currentStatus === 'accepted' || currentStatus === 'rejected') && currentStatus !== 'pending' && (
+                  {(currentStatus === 'accepted' || currentStatus === 'rejected') && (
                     <Menu.Item>
                       {({ active }) => (
                         <button
@@ -755,7 +755,7 @@ export default function ManageCandidatesPage() {
         </div>
 
         {/* Candidates Table */}
-        <Card className="p-6 bg-white/80 backdrop-blur-md border-gray-200/50 shadow-xl shadow-teal-500/5">
+        <Card className="p-6 bg-white border-gray-200 shadow-lg">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -774,7 +774,7 @@ export default function ManageCandidatesPage() {
                   placeholder="Search candidates..."
                   value={globalFilter ?? ''}
                   onChange={(e) => setGlobalFilter(String(e.target.value))}
-                  className="pl-10 w-72 bg-white/60 backdrop-blur-sm border-gray-300/50 focus:bg-white transition-all"
+                  className="pl-10 w-72 bg-white border-gray-300 focus:bg-white transition-all"
                 />
               </div>
             </div>

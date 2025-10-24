@@ -6,8 +6,9 @@ import { getUserAppliedJobs } from '@/lib/supabase/applications'
 import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Footer } from '@/components/layout/Footer'
+import { ApplicationDetailsModal } from '@/components/modals/ApplicationDetailsModal'
 import { toast } from 'react-hot-toast'
-import { Calendar, MapPin, DollarSign, Building2, Briefcase, Clock, CheckCircle2, XCircle, FileText } from 'lucide-react'
+import { Calendar, MapPin, DollarSign, Building2, Briefcase, Clock, CheckCircle2, XCircle, FileText, Eye } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 interface Application {
@@ -15,13 +16,17 @@ interface Application {
   job_id: string
   status: 'submitted' | 'pending' | 'accepted' | 'rejected'
   created_at: string
+  application_data?: any
   job: {
     id: string
     job_title: string
     job_type: string
+    job_description?: string
     company_name?: string
     company_logo?: string
     location?: string
+    department?: string
+    required_skills?: string[]
     min_salary: number
     max_salary: number
     status: string
@@ -33,6 +38,18 @@ export default function MyApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'submitted' | 'pending' | 'accepted' | 'rejected'>('all')
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+
+  const handleViewDetails = (application: Application) => {
+    setSelectedApplication(application)
+    setShowDetailsModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowDetailsModal(false)
+    setSelectedApplication(null)
+  }
 
   useEffect(() => {
     loadApplications()
@@ -140,7 +157,8 @@ export default function MyApplicationsPage() {
                   {filteredApplications.map((application) => (
                     <Card
                       key={application.id}
-                      className="group p-6 hover:shadow-2xl transition-all duration-300 border border-gray-200 rounded-2xl bg-white/90 backdrop-blur-md hover:scale-[1.01]"
+                      className="group p-6 hover:shadow-2xl transition-all duration-300 border border-gray-200 rounded-2xl bg-white/90 backdrop-blur-md hover:scale-[1.01] cursor-pointer"
+                      onClick={() => handleViewDetails(application)}
                     >
                       <div className="flex flex-col sm:flex-row items-start gap-4">
                         {/* Company Logo */}
@@ -205,6 +223,20 @@ export default function MyApplicationsPage() {
                               </span>
                             </div>
                           </div>
+
+                          {/* View Details Button */}
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <button
+                              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-600 to-sky-600 text-white font-semibold rounded-lg hover:from-teal-700 hover:to-sky-700 transition-all duration-300 shadow-md hover:shadow-lg group-hover:scale-105"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleViewDetails(application)
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </Card>
@@ -225,6 +257,13 @@ export default function MyApplicationsPage() {
         </div>
       </div>
       <Footer />
+
+      {/* Application Details Modal */}
+      <ApplicationDetailsModal
+        isOpen={showDetailsModal}
+        onClose={handleCloseModal}
+        application={selectedApplication}
+      />
     </div>
   )
 }

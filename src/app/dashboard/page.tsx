@@ -9,9 +9,10 @@ import { getJobs, type Job } from '@/lib/supabase/jobs'
 import { getUserAppliedJobIds } from '@/lib/supabase/applications'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X, ArrowLeft } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 
 // Transform job data for candidate display
 const transformJobForCandidate = (job: Job) => {
@@ -45,7 +46,20 @@ export default function CandidateDashboard() {
   const [showFilters, setShowFilters] = useState(false)
   const [filterJobType, setFilterJobType] = useState<string>('all')
   const [filterLocation, setFilterLocation] = useState<string>('all')
+  const [mobileView, setMobileView] = useState<'list' | 'details'>('list')
+  const [isMobile, setIsMobile] = useState(false)
   const { user } = useAuth()
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     loadJobs()
@@ -95,6 +109,10 @@ export default function CandidateDashboard() {
 
   const handleJobSelect = (jobId: string) => {
     setSelectedJobId(jobId)
+    // Switch to details view on mobile
+    if (isMobile) {
+      setMobileView('details')
+    }
   }
 
   const transformedJobs = jobs.map(transformJobForCandidate)
@@ -143,9 +161,12 @@ export default function CandidateDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="flex flex-1 h-[calc(100vh-12rem)] bg-gradient-to-br from-gray-50 to-gray-100 p-6 gap-6">
+      <div className="flex flex-1 h-[calc(100vh-12rem)] bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 gap-6">
         {/* Left Column - Job List */}
-        <Card className="w-full lg:w-[40%] bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto flex flex-col">
+        <Card className={cn(
+          "w-full lg:w-[40%] bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto flex flex-col",
+          isMobile && mobileView === 'details' ? 'hidden' : 'flex'
+        )}>
           {/* Search and Filter Section */}
           <div className="p-6 border-b border-gray-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Listings</h2>
@@ -243,7 +264,7 @@ export default function CandidateDashboard() {
           </div>
 
           {/* Job Cards */}
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar flex-1">
             {filteredJobs.length > 0 ? (
               filteredJobs.map((job) => (
                 <JobCardCandidate
@@ -273,7 +294,23 @@ export default function CandidateDashboard() {
         </Card>
 
         {/* Right Column - Job Details */}
-        <Card className="hidden lg:block flex-1 bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto">
+        <Card className={cn(
+          "flex-1 bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl overflow-y-auto",
+          isMobile && mobileView === 'list' ? 'hidden' : 'block'
+        )}>
+          {/* Back to List button for mobile */}
+          {isMobile && (
+            <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-gray-200 p-4">
+              <Button
+                variant="ghost"
+                onClick={() => setMobileView('list')}
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                Back to List
+              </Button>
+            </div>
+          )}
           <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
         </Card>
       </div>
