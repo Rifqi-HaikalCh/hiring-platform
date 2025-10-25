@@ -388,23 +388,17 @@ export default function ManageCandidatesPage() {
       header: ({ table }) => (
         <input
           type="checkbox"
-          {...{
-            checked: table.getIsAllRowsSelected(),
-            indeterminate: table.getIsSomeRowsSelected(),
-            onChange: table.getToggleAllRowsSelectedHandler(),
-          }}
+          checked={table.getIsAllRowsSelected()}
+          onChange={table.getToggleAllRowsSelectedHandler()}
           className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
         />
       ),
       cell: ({ row }) => (
         <input
           type="checkbox"
-          {...{
-            checked: row.getIsSelected(),
-            disabled: !row.getCanSelect(),
-            indeterminate: row.getIsSomeSelected(),
-            onChange: row.getToggleSelectedHandler(),
-          }}
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onChange={row.getToggleSelectedHandler()}
           className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
         />
       ),

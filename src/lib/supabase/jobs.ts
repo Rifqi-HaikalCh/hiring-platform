@@ -41,13 +41,21 @@ export async function getJobs() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Get jobs error:', error)
+      console.error('Get jobs error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       throw error
     }
 
     return { data: data as Job[], error: null }
-  } catch (error) {
-    console.error('Get jobs error:', error)
+  } catch (error: any) {
+    console.error('Get jobs error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name
+    })
     return { data: null, error }
   }
 }
@@ -61,13 +69,24 @@ export async function getJobById(id: string) {
       .single()
 
     if (error) {
-      console.error('Get job by ID error:', error)
+      console.error('Get job by ID error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        jobId: id
+      })
       throw error
     }
 
     return { data: data as Job, error: null }
-  } catch (error) {
-    console.error('Get job error:', error)
+  } catch (error: any) {
+    console.error('Get job error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      stack: error?.stack,
+      jobId: id
+    })
     return { data: null, error }
   }
 }
@@ -81,12 +100,21 @@ export async function createJob(job: Omit<Job, 'id' | 'created_at' | 'updated_at
       .single()
 
     if (error) {
+      console.error('Create job error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       throw error
     }
 
     return { data: data as Job, error: null }
-  } catch (error) {
-    console.error('Create job error:', error)
+  } catch (error: any) {
+    console.error('Create job error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name
+    })
     return { data: null, error }
   }
 }
@@ -148,12 +176,23 @@ export async function updateJob(jobId: string, updates: Partial<Job>) {
       .single()
 
     if (error) {
+      console.error('Update job error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        jobId
+      })
       throw error
     }
 
     return { data: data as Job, error: null }
-  } catch (error) {
-    console.error('Update job error:', error)
+  } catch (error: any) {
+    console.error('Update job error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      jobId
+    })
     return { data: null, error }
   }
 }
@@ -168,12 +207,25 @@ export async function updateJobStatus(jobId: string, newStatus: 'active' | 'inac
       .single()
 
     if (error) {
+      console.error('Update job status error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        jobId,
+        newStatus
+      })
       throw error
     }
 
     return { data: data as Job, error: null }
-  } catch (error) {
-    console.error('Update job status error:', error)
+  } catch (error: any) {
+    console.error('Update job status error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      jobId,
+      newStatus
+    })
     return { data: null, error }
   }
 }
@@ -186,12 +238,23 @@ export async function deleteJob(jobId: string) {
       .eq('id', jobId)
 
     if (error) {
+      console.error('Delete job error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        jobId
+      })
       throw error
     }
 
     return { error: null }
-  } catch (error) {
-    console.error('Delete job error:', error)
+  } catch (error: any) {
+    console.error('Delete job error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      jobId
+    })
     return { error }
   }
 }

@@ -57,13 +57,37 @@ export async function handleSignIn({ email, password }: SignInData) {
     })
 
     if (error) {
-      throw error
+      console.error('Sign in error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        email: email
+      })
+
+      // Provide user-friendly error messages
+      let userMessage = error.message
+      if (error.message === 'Invalid login credentials') {
+        userMessage = 'Invalid email or password. Please check your credentials and try again.'
+      } else if (error.message.includes('Email not confirmed')) {
+        userMessage = 'Please verify your email address before signing in.'
+      }
+
+      throw new Error(userMessage)
     }
 
     return { data, error: null }
-  } catch (error) {
-    console.error('Sign in error:', error)
-    return { data: null, error }
+  } catch (error: any) {
+    console.error('Sign in error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name
+    })
+    return {
+      data: null,
+      error: {
+        message: error?.message || 'An unexpected error occurred during sign in',
+        status: error?.status
+      }
+    }
   }
 }
 
@@ -71,11 +95,19 @@ export async function handleSignOut() {
   try {
     const { error } = await supabase.auth.signOut()
     if (error) {
+      console.error('Sign out error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      })
       throw error
     }
     return { error: null }
-  } catch (error) {
-    console.error('Sign out error:', error)
+  } catch (error: any) {
+    console.error('Sign out error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name
+    })
     return { error }
   }
 }
@@ -97,12 +129,23 @@ export async function getUserProfile(userId: string) {
       .single()
 
     if (error) {
+      console.error('Get profile error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        userId
+      })
       throw error
     }
 
     return { data, error: null }
-  } catch (error) {
-    console.error('Get profile error:', error)
+  } catch (error: any) {
+    console.error('Get profile error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      userId
+    })
     return { data: null, error }
   }
 }
@@ -117,12 +160,22 @@ export async function handleMagicLinkSignIn(email: string) {
     })
 
     if (error) {
+      console.error('Magic link error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        email
+      })
       throw error
     }
 
     return { data, error: null }
-  } catch (error) {
-    console.error('Magic link error:', error)
+  } catch (error: any) {
+    console.error('Magic link error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      email
+    })
     return { data: null, error }
   }
 }
@@ -134,12 +187,22 @@ export async function handleForgotPassword(email: string) {
     })
 
     if (error) {
+      console.error('Forgot password error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        email
+      })
       throw error
     }
 
     return { data, error: null }
-  } catch (error) {
-    console.error('Forgot password error:', error)
+  } catch (error: any) {
+    console.error('Forgot password error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name,
+      email
+    })
     return { data: null, error }
   }
 }
@@ -154,12 +217,20 @@ export async function handleGoogleSignIn() {
     })
 
     if (error) {
+      console.error('Google sign in error:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      })
       throw error
     }
 
     return { data, error: null }
-  } catch (error) {
-    console.error('Google sign in error:', error)
+  } catch (error: any) {
+    console.error('Google sign in error:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name
+    })
     return { data: null, error }
   }
 }
