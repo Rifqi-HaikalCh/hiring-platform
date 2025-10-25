@@ -361,15 +361,14 @@ export default function ManageCandidatesPage() {
   )
 
   // Handle status change for candidates
-  const handleStatusChange = async (applicationId: string, newStatus: 'pending' | 'accepted' | 'rejected') => {
-    try {
-      const { data, error } = await updateApplicationStatus(applicationId, newStatus)
+const handleStatusChange = async (applicationId: string, newStatus: 'pending' | 'accepted' | 'rejected') => {
+  try {
+    const { data, error } = await updateApplicationStatus(applicationId, newStatus); // Update status aplikasi dulu
 
-      if (error) {
-        toast.error('Failed to update candidate status')
-        return
-      }
-
+    if (error) {
+      toast.error('Failed to update candidate status');
+      return;
+    }
       // Update local state
       setApplications(prevApplications =>
         prevApplications.map(app =>
@@ -380,24 +379,29 @@ export default function ManageCandidatesPage() {
       toast.success(`Candidate ${newStatus === 'accepted' ? 'accepted' : newStatus === 'rejected' ? 'rejected' : 'set to pending'} successfully`)
 
       // Check if job should be auto-deactivated when accepting a candidate
-      if (newStatus === 'accepted' && jobId) {
-        console.log('Checking if job should be auto-deactivated for job:', jobId)
-        const result = await checkAndDeactivateJobIfFull(jobId)
-        console.log('Auto-deactivate result:', result)
+if (newStatus === 'accepted' && jobId) {
+      console.log(`[handleStatusChange] Status changed to accepted for app ${applicationId}, job ${jobId}. Checking if job should be deactivated...`); // Log sebelum memanggil
+      const result = await checkAndDeactivateJobIfFull(jobId); // Panggil fungsi cek
+      console.log('[handleStatusChange] Auto-deactivate check result:', result); // Log hasilnya
 
         if (result.success && result.deactivated) {
           // Reload job details to reflect the status change
-          const { data: updatedJob, error: refreshError } = await getJobById(jobId)
-          if (!refreshError && updatedJob) {
-            setJob(updatedJob)
-            toast('Lowongan telah otomatis dinonaktifkan karena semua posisi telah terisi')
-          }
+const { data: updatedJob, error: refreshError } = await getJobById(jobId);
+        if (!refreshError && updatedJob) {
+          setJob(updatedJob);
+          toast('Lowongan telah otomatis dinonaktifkan karena semua posisi telah terisi'); // Pesan mungkin perlu disesuaikan
         }
+      } else if (!result.success) {
+          // Tambahkan pesan jika checkAndDeactivateJobIfFull gagal
+          toast.error('Gagal memeriksa status deaktivasi otomatis lowongan.');
+          console.error('[handleStatusChange] checkAndDeactivateJobIfFull failed:', result.error);
       }
-    } catch (error) {
-      toast.error('An error occurred while updating status')
     }
+  } catch (error) {
+    toast.error('An error occurred while updating status');
+    console.error('[handleStatusChange] Unexpected error:', error); // Log error tak terduga
   }
+};
 
 // Definisi kolom (columns) tetap sama
   const columns = useMemo(() => [

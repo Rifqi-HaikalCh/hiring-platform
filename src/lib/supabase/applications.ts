@@ -235,55 +235,53 @@ export async function getAcceptedApplicationsCount(jobId: string) {
 
 export async function checkAndDeactivateJobIfFull(jobId: string) {
   try {
-    console.log(`[checkAndDeactivateJobIfFull] Starting check for job: ${jobId}`); // Log awal
+    console.log(`[checkAndDeactivateJobIfFull] Starting check for job: ${jobId}`);
 
-    // Get job details
+    // Get job details... (kode tetap sama)
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('*') // Pastikan 'candidates_needed' dan 'status' ada di select
+      .select('id, candidates_needed, status') // Ambil hanya kolom yang diperlukan
       .eq('id', jobId)
       .single();
 
-    if (jobError || !job) {
-      console.error(`[checkAndDeactivateJobIfFull] Failed to get job ${jobId}:`, jobError);
-      return { success: false, error: jobError };
-    }
-    console.log(`[checkAndDeactivateJobIfFull] Job details fetched:`, job); // Log detail job
+    if (jobError || !job) { /* ... logging error ... */ return { success: false, error: jobError }; }
+    console.log(`[checkAndDeactivateJobIfFull] Job details fetched:`, job);
 
-    // Get accepted count
+    // Get accepted count... (kode tetap sama)
     const { data: acceptedCount, error: countError } = await getAcceptedApplicationsCount(jobId);
-    if (countError) {
-      console.error(`[checkAndDeactivateJobIfFull] Failed to get accepted count for job ${jobId}:`, countError);
-      return { success: false, error: countError };
-    }
-    console.log(`[checkAndDeactivateJobIfFull] Accepted count for job ${jobId}: ${acceptedCount}`); // Log accepted count
+    if (countError) { /* ... logging error ... */ return { success: false, error: countError }; }
+    console.log(`[checkAndDeactivateJobIfFull] Accepted count for job ${jobId}: ${acceptedCount}`);
 
-    console.log(`[checkAndDeactivateJobIfFull] Checking condition: ${acceptedCount} >= ${job.candidates_needed} && ${job.status} === 'active'`); // Log kondisi
+    console.log(`[checkAndDeactivateJobIfFull] Checking condition: ${acceptedCount} >= ${job.candidates_needed} && ${job.status} === 'active'`);
 
     // Check if job should be deactivated
     if (acceptedCount >= job.candidates_needed && job.status === 'active') {
-      console.log(`[checkAndDeactivateJobIfFull] Condition met. Attempting to deactivate job ${jobId}...`); // Log sebelum update
+      console.log(`[checkAndDeactivateJobIfFull] Condition met. Attempting to deactivate job ${jobId}...`);
 
       // Update job status directly
       const { error: updateError } = await supabase
         .from('jobs')
         .update({ status: 'inactive' })
-        .eq('id', jobId);
+        .eq('id', jobId); // Targetkan update ke job ID yang benar
 
+      // ---> Tambahkan Log Error Spesifik Di Sini <---
       if (updateError) {
-        console.error(`[checkAndDeactivateJobIfFull] Failed to deactivate job ${jobId}:`, updateError); // Log error update
+        console.error(`[checkAndDeactivateJobIfFull] FAILED TO UPDATE job status for ${jobId}:`, updateError); // Log error update
+        // Anda bisa melempar error di sini jika perlu penanganan lebih lanjut
+        // throw updateError;
         return { success: false, error: updateError };
       }
+      // ----------------------------------------------
 
-      console.log(`[checkAndDeactivateJobIfFull] Job ${jobId} successfully auto-deactivated.`); // Log sukses
+      console.log(`[checkAndDeactivateJobIfFull] Job ${jobId} successfully auto-deactivated.`);
       return { success: true, deactivated: true, message: 'Job auto-deactivated as candidates needed quota is met' };
     } else {
-        console.log(`[checkAndDeactivateJobIfFull] Condition not met for job ${jobId}. Status remains ${job.status}.`); // Log jika kondisi tidak terpenuhi
+        console.log(`[checkAndDeactivateJobIfFull] Condition not met for job ${jobId}. Status remains ${job.status}.`);
     }
 
     return { success: true, deactivated: false };
   } catch (error) {
-    console.error(`[checkAndDeactivateJobIfFull] Unexpected error for job ${jobId}:`, error); // Log error tak terduga
+    console.error(`[checkAndDeactivateJobIfFull] Unexpected error for job ${jobId}:`, error);
     return { success: false, error };
   }
 }
