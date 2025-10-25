@@ -121,10 +121,10 @@ export default function CandidateLayout({
                     {!isSidebarCollapsed && item.name}
                   </div>
 
-                  {/* --- 4. Tampilkan Badge Khusus untuk Notifikasi --- */}
                   {!isSidebarCollapsed && isNotifications && (
-                    // Letakkan Badge di sini, gunakan styling minimal karena sudah ada di komponennya
-                    <NotificationBadge className="p-0 hover:bg-transparent" />
+                    // Tampilkan hanya badge angka (tanpa ikon internalnya) jika memungkinkan,
+                    // atau biarkan seperti ini jika NotificationBadge tidak bisa diubah
+                    <NotificationBadge className="p-0 hover:bg-transparent relative -top-0.5" /> // Sedikit penyesuaian posisi
                   )}
                 </Link>
               );
@@ -219,19 +219,29 @@ export default function CandidateLayout({
                             : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                         )}
                       >
-                         {/* Ikon dan Teks */}
-                        <div className="flex items-center">
-                          <item.icon
-                            className={cn(
-                              'mr-3 h-5 w-5 flex-shrink-0',
-                              isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
-                            )}
-                          />
-                          {item.name}
-                        </div>
-                        {/* Badge Notifikasi */}
+<div className="flex items-center">
+                           {/* --- Modifikasi di sini (Mobile) --- */}
+                           {!isNotifications && ( // Jangan tampilkan ikon default jika Notifikasi
+                            <item.icon
+                              className={cn(
+                                'mr-3 h-5 w-5 flex-shrink-0',
+                                isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
+                              )}
+                            />
+                           )}
+                           {isNotifications && ( // Tampilkan ikon Bell langsung untuk Notifikasi
+                             <Bell
+                                className={cn(
+                                  'mr-3 h-5 w-5 flex-shrink-0',
+                                  isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
+                                )}
+                              />
+                           )}
+                           {/* --------------------------------- */}
+                           {item.name}
+                         </div>
                         {isNotifications && (
-                          <NotificationBadge className="p-0 hover:bg-transparent" />
+                          <NotificationBadge className="p-0 hover:bg-transparent relative -top-0.5" />
                         )}
                       </Link>
                     );
