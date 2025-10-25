@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast' // Import toast
 
+
 export function Navbar() {
   const { user, logout } = useAuth() // Now 'logout' exists here
   const router = useRouter()

@@ -74,34 +74,35 @@ export async function updateApplicationStatus(
       throw fetchError
     }
 
-    // Update status
+// Update status
     const { data, error } = await supabase
       .from('applications')
       .update({ status })
       .eq('id', applicationId)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      throw error
+      throw error;
     }
 
-    // Send notification to candidate
+    // ---> Kirim notifikasi ke kandidat <---
     if (application && application.applicant_id && application.jobs) {
-      const { notifyApplicationStatusChange } = await import('./notifications')
+      const { notifyApplicationStatusChange } = await import('./notifications'); // Impor fungsi notifikasi
       await notifyApplicationStatusChange(
         application.applicant_id,
         applicationId,
         application.job_id,
         application.jobs.job_title,
         status
-      )
+      );
     }
+    // ------------------------------------
 
-    return { data: data as Application, error: null }
+    return { data: data as Application, error: null };
   } catch (error) {
-    console.error('Update application status error:', error)
-    return { data: null, error }
+    console.error('Update application status error:', error);
+    return { data: null, error };
   }
 }
 
