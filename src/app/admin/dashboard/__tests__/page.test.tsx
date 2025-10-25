@@ -5,6 +5,8 @@ import AdminDashboard from '../page'; // Sesuaikan path jika perlu
 import * as jobsApi from '@/lib/supabase/jobs'; // Mock module Supabase jobs
 import { useRouter } from 'next/navigation'; // Mock next/navigation
 
+// --- MOCKS ---
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
@@ -26,8 +28,15 @@ jest.mock('react-hot-toast', () => ({
   },
 }));
 
+// Mock lottie-react
+jest.mock('lottie-react', () => ({
+  __esModule: true,
+  default: jest.fn(() => <div data-testid="mock-lottie">Mock Lottie Animation</div>),
+}));
+
 // Mock window.confirm
 global.confirm = jest.fn(() => true); // Default ke true (user mengonfirmasi)
+// --- END MOCKS ---
 
 // Contoh data job untuk testing
 const mockJobsData = [
@@ -88,9 +97,13 @@ describe('AdminDashboard', () => {
       expect(screen.getByText('UI/UX Designer')).toBeInTheDocument();
     });
 
-    // Cek jumlah job card
-    const jobCards = screen.getAllByRole('article'); // Asumsi JobCardAdmin punya role 'article' atau cari cara lain
-    expect(jobCards).toHaveLength(mockJobsData.length);
+    // PERBAIKAN BARU: Cari kontainer job list (berdasarkan heading 'Job List')
+    // dan cari H3 hanya di dalamnya, untuk menghindari 'Quick Stats'.
+    const jobListContainer = screen.getByRole('heading', { name: /job list/i }).closest('div[class*="lg:col-span-2"]');
+    expect(jobListContainer).toBeInTheDocument(); // Pastikan kontainer ditemukan
+
+    const allJobHeadings = within(jobListContainer as HTMLElement).getAllByRole('heading', { level: 3 });
+    expect(allJobHeadings.length).toBe(mockJobsData.length);
 
     // Cek quick stats
     expect(screen.getByText('Active Jobs').nextSibling).toHaveTextContent('1');
@@ -119,7 +132,7 @@ describe('AdminDashboard', () => {
     render(<AdminDashboard />);
     await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
 
-    const activeButton = screen.getByRole('button', { name: /active/i });
+    const activeButton = screen.getByRole('button', { name: /^Active$/i });
     fireEvent.click(activeButton);
 
     await waitFor(() => {
@@ -128,8 +141,7 @@ describe('AdminDashboard', () => {
       expect(screen.queryByText('UI/UX Designer')).not.toBeInTheDocument();
     });
 
-    // Cek filter 'Inactive'
-    const inactiveButton = screen.getByRole('button', { name: /inactive/i });
+    const inactiveButton = screen.getByRole('button', { name: /^Inactive$/i });
     fireEvent.click(inactiveButton);
 
     await waitFor(() => {
@@ -141,41 +153,47 @@ describe('AdminDashboard', () => {
 
   // Test 4: Sorting berdasarkan title (ascending)
   test('sorts jobs by title ascending', async () => {
-      render(<AdminDashboard />);
-      await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
+    render(<AdminDashboard />);
+    await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
 
-      const titleSortButton = screen.getByRole('button', { name: /title/i });
-      fireEvent.click(titleSortButton); // Klik pertama untuk ascending
+    const titleSortButton = screen.getByRole('button', { name: /Title/i });
+    fireEvent.click(titleSortButton); // Klik pertama untuk ascending
 
-      await waitFor(() => {
-          const jobCards = screen.getAllByRole('article'); // Dapatkan ulang setelah sort
-          const titles = jobCards.map(card => card.querySelector('h3')?.textContent); // Ambil judul dari h3
-          expect(titles).toEqual([
-              'Backend Engineer',
-              'Frontend Developer',
-              'UI/UX Designer',
-          ]);
-      });
+    await waitFor(() => {
+      // PERBAIKAN BARU: Batasi pencarian H3 di dalam kontainer job list
+      const jobListContainer = screen.getByRole('heading', { name: /job list/i }).closest('div[class*="lg:col-span-2"]');
+      const jobHeadings = within(jobListContainer as HTMLElement).getAllByRole('heading', { level: 3 });
+      
+      const titles = jobHeadings.map((heading) => heading.textContent);
+      expect(titles).toEqual([
+        'Backend Engineer',
+        'Frontend Developer',
+        'UI/UX Designer',
+      ]);
+    });
   });
 
-   // Test 5: Sorting berdasarkan title (descending)
+  // Test 5: Sorting berdasarkan title (descending)
   test('sorts jobs by title descending', async () => {
-      render(<AdminDashboard />);
-      await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
+    render(<AdminDashboard />);
+    await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
 
-      const titleSortButton = screen.getByRole('button', { name: /title/i });
-      fireEvent.click(titleSortButton); // Klik pertama (asc)
-      fireEvent.click(titleSortButton); // Klik kedua (desc)
+    const titleSortButton = screen.getByRole('button', { name: /Title/i });
+    fireEvent.click(titleSortButton); // Klik pertama (asc)
+    fireEvent.click(titleSortButton); // Klik kedua (desc)
 
-      await waitFor(() => {
-          const jobCards = screen.getAllByRole('article');
-          const titles = jobCards.map(card => card.querySelector('h3')?.textContent);
-          expect(titles).toEqual([
-              'UI/UX Designer',
-              'Frontend Developer',
-              'Backend Engineer',
-          ]);
-      });
+    await waitFor(() => {
+      // PERBAIKAN BARU: Batasi pencarian H3 di dalam kontainer job list
+      const jobListContainer = screen.getByRole('heading', { name: /job list/i }).closest('div[class*="lg:col-span-2"]');
+      const jobHeadings = within(jobListContainer as HTMLElement).getAllByRole('heading', { level: 3 });
+
+      const titles = jobHeadings.map((heading) => heading.textContent);
+      expect(titles).toEqual([
+        'UI/UX Designer',
+        'Frontend Developer',
+        'Backend Engineer',
+      ]);
+    });
   });
 
   // Test 6: Membuka modal Create Job
@@ -186,36 +204,31 @@ describe('AdminDashboard', () => {
     const createButton = screen.getByRole('button', { name: /create a new job/i });
     fireEvent.click(createButton);
 
-    // Cek apakah modal muncul (berdasarkan title atau role)
-    // Tunggu modal muncul
     expect(await screen.findByRole('dialog', { name: /create job opening/i })).toBeInTheDocument();
   });
 
-   // Test 7: Memanggil fungsi delete saat tombol delete diklik dan dikonfirmasi
+  // Test 7: Memanggil fungsi delete saat tombol delete diklik dan dikonfirmasi
   test('calls deleteJob when delete action is confirmed', async () => {
     mockDeleteJob.mockResolvedValue({ error: null }); // Mock successful delete
     render(<AdminDashboard />);
-    await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
-
-    // Cari job card pertama (Frontend Developer)
-    const frontendCard = screen.getByText('Frontend Developer').closest('article');
+    
+    const frontendCardText = await screen.findByText('Frontend Developer');
+    const frontendCard = frontendCardText.closest('div[class*="magic-bento-card"]');
+    
     expect(frontendCard).toBeInTheDocument();
 
-    // Klik tombol action (...)
-    const moreButton = within(frontendCard!).getByRole('button', { name: /more options/i }); // Ganti name jika berbeda
+    // PERBAIKAN BARU: Ambil semua tombol di card dan pilih yang pertama (ellipsis button)
+    const allButtonsInCard = within(frontendCard as HTMLElement).getAllByRole('button');
+    const moreButton = allButtonsInCard[0];
     fireEvent.click(moreButton);
 
-    // Klik tombol delete di dropdown (tunggu dropdown muncul)
     const deleteButton = await screen.findByRole('button', { name: /delete job/i });
     fireEvent.click(deleteButton);
 
-    // Pastikan window.confirm dipanggil
     expect(global.confirm).toHaveBeenCalledTimes(1);
 
-    // Tunggu proses delete
     await waitFor(() => {
-      expect(mockDeleteJob).toHaveBeenCalledWith('job1'); // Cek ID job
-      // Cek apakah job card hilang
+      expect(mockDeleteJob).toHaveBeenCalledWith('job1');
       expect(screen.queryByText('Frontend Developer')).not.toBeInTheDocument();
     });
   });
@@ -224,10 +237,15 @@ describe('AdminDashboard', () => {
   test('does not call deleteJob when delete action is cancelled', async () => {
     (global.confirm as jest.Mock).mockReturnValue(false); // Mock user membatalkan
     render(<AdminDashboard />);
-    await waitFor(() => expect(mockGetJobs).toHaveBeenCalled());
+    
+    const frontendCardText = await screen.findByText('Frontend Developer');
+    const frontendCard = frontendCardText.closest('div[class*="magic-bento-card"]');
+    
+    expect(frontendCard).toBeInTheDocument();
 
-    const frontendCard = screen.getByText('Frontend Developer').closest('article');
-    const moreButton = within(frontendCard!).getByRole('button', { name: /more options/i });
+    // PERBAIKAN BARU: Ambil semua tombol di card dan pilih yang pertama (ellipsis button)
+    const allButtonsInCard = within(frontendCard as HTMLElement).getAllByRole('button');
+    const moreButton = allButtonsInCard[0];
     fireEvent.click(moreButton);
 
     const deleteButton = await screen.findByRole('button', { name: /delete job/i });
@@ -237,10 +255,4 @@ describe('AdminDashboard', () => {
     expect(mockDeleteJob).not.toHaveBeenCalled();
     expect(screen.getByText('Frontend Developer')).toBeInTheDocument(); // Job masih ada
   });
-
-  // Tambahkan test case lain untuk:
-  // - Aksi Edit
-  // - Aksi Toggle Status
-  // - Pagination (jika ada banyak data)
-  // - Tampilan Empty State
 });

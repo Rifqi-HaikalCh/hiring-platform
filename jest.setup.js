@@ -5,6 +5,12 @@ import dotenv from 'dotenv'; // Import dotenv
 
 // Muat variabel dari .env.test SEBELUM mock lain dijalankan
 dotenv.config({ path: '.env.test' });
+// Mock ResizeObserver
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
 
 // Mock API animasi
 mockAnimationsApi();

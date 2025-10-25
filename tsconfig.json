@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".", // Atau "./src" jika alias @/* menunjuk ke src
+    "paths": {
+      "@/*": ["src/*"] // Pastikan path ini benar
+    },
     "target": "ES2017",
     "lib": [
       "dom",

@@ -234,3 +234,5 @@ export async function handleGoogleSignIn() {
     return { data: null, error }
   }
 }
+
+export { supabase }

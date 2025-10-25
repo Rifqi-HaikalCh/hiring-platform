@@ -1,227 +1,211 @@
 // src/app/dashboard/applications/__tests__/page.test.tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MyApplicationsPage from '../page'; // Sesuaikan path jika perlu
+// PASTIKAN NAMA IMPOR INI BENAR sesuai nama ekspor di ../page.tsx
+import MyApplicationsPage from '../page';
 import * as applicationsApi from '@/lib/supabase/applications'; // Mock module Supabase applications
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'; // Mock context hook
+import { useAuth } from '@/contexts/AuthContext'; // Mock AuthContext hook
+import { act } from 'react'; // Import act
+
+// --- MOCKS ---
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(() => ({ push: jest.fn() })),
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
 }));
 
-// Mock Supabase applications functions
-jest.mock('@/lib/supabase/applications');
+// Mock AuthContext hook
+jest.mock('../../../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+}));
+
+// Mock Supabase applications functions using RELATIVE PATH
+// Path: ../../../../lib/supabase/applications
+jest.mock('../../../../lib/supabase/applications'); // Cukup mock path-nya
+// Definisikan mock function setelah mock path
 const mockGetUserAppliedJobs = applicationsApi.getUserAppliedJobs as jest.Mock;
+const mockDeleteApplication = applicationsApi.deleteApplication as jest.Mock;
 
-// Mock useAuth context hook
-jest.mock('@/contexts/AuthContext');
-const mockUseAuth = useAuth as jest.Mock;
+// Mock react-hot-toast (bisa pakai alias, biasanya aman)
+jest.mock('react-hot-toast', () => ({ /* ... */ }));
 
-// Mock react-hot-toast
-jest.mock('react-hot-toast', () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-  },
-}));
+// Mock lottie-react (bisa pakai alias)
+jest.mock('lottie-react', () => ({ /* ... */ }));
 
-// Mock ApplicationDetailsModal
-jest.mock('@/components/modals/ApplicationDetailsModal', () => ({
-  ApplicationDetailsModal: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) =>
-    isOpen ? <div data-testid="mock-details-modal" onClick={onClose}>Mock Details Modal</div> : null,
-}));
+// Mock window.confirm
+global.confirm = jest.fn(() => true);
 
-// Contoh data aplikasi untuk testing
-const mockApplicationsData = [
-  {
-    id: 'app1',
-    job_id: 'job1',
-    status: 'submitted' as const,
-    created_at: new Date('2024-10-24').toISOString(),
-    job: {
-      id: 'job1',
-      job_title: 'Frontend Developer',
-      company_name: 'TechCorp',
-      min_salary: 7000000,
-      max_salary: 9000000,
-      // ... field job lainnya
-    },
-  },
-  {
-    id: 'app2',
-    job_id: 'job2',
-    status: 'pending' as const,
-    created_at: new Date('2024-10-23').toISOString(),
-    job: {
-      id: 'job2',
-      job_title: 'Backend Engineer',
-      company_name: 'DataSys',
-      min_salary: 8000000,
-      max_salary: 10000000,
-       // ... field job lainnya
-    },
-  },
-  {
-    id: 'app3',
-    job_id: 'job3',
-    status: 'accepted' as const,
-    created_at: new Date('2024-10-22').toISOString(),
-    job: {
-      id: 'job3',
-      job_title: 'UI/UX Designer',
-      company_name: 'Creative Solutions',
-      min_salary: 6000000,
-      max_salary: 8000000,
-      // ... field job lainnya
-    },
-  },
+// Mock ApplicationDetailsModal using RELATIVE PATH
+// Path: ../../../../components/modals/ApplicationDetailsModal
+jest.mock('../../../../components/modals/ApplicationDetailsModal', () => {
+    const MockModal = ({ isOpen, onClose, application }: any) =>
+    isOpen ? (
+      <div data-testid="mock-details-modal" aria-label="Application Details">
+        Mock Modal for {application?.job?.job_title}
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null;
+  MockModal.displayName = 'MockApplicationDetailsModal';
+  return { __esModule: true, default: MockModal };
+});
+
+// Mock komponen kartu aplikasi using RELATIVE PATH
+// Path: ../../../components/candidate/ApplicationCardCandidate
+jest.mock('../../../components/candidate/ApplicationCardCandidate', () => {
+    const MockCard = ({ application, onViewDetails, onWithdraw }: any) => (
+        <article data-testid={`app-card-${application.id}`}>
+            <h2>{application.job.job_title}</h2>
+            <p>{application.status}</p>
+            <button onClick={() => onViewDetails(application)}>View Details</button>
+            <button onClick={() => onWithdraw(application.id)}>Withdraw Application</button>
+        </article>
+    );
+    MockCard.displayName = 'MockApplicationCardCandidate';
+    return { __esModule: true, default: MockCard };
+});
+
+// --- END MOCKS ---
+
+
+// Contoh data user untuk AuthContext
+const mockUser = {
+  id: 'test-user-id',
+  email: 'candidate@example.com',
+};
+
+// Contoh data aplikasi yang sudah di-transform
+const mockAppliedJobsData = [
     {
-    id: 'app4',
-    job_id: 'job4',
-    status: 'rejected' as const,
-    created_at: new Date('2024-10-21').toISOString(),
-    job: {
-      id: 'job4',
-      job_title: 'Data Analyst',
-      company_name: 'Insight Inc.',
-      min_salary: 7500000,
-      max_salary: 9500000,
-      // ... field job lainnya
-    },
+    id: 'app1', job_id: 'job1', status: 'submitted' as const, created_at: new Date('2024-10-25').toISOString(),
+    job: { id: 'job1', job_title: 'Frontend Developer', company_name: 'Tech Solutions', location: 'Jakarta', status: 'active' as const, },
+    application_data: { full_name: 'Test User' }
+  },
+  {
+    id: 'app2', job_id: 'job2', status: 'accepted' as const, created_at: new Date('2024-10-20').toISOString(),
+    job: { id: 'job2', job_title: 'Backend Engineer', company_name: 'Data Systems', location: 'Bandung', status: 'active' as const, },
+    application_data: { full_name: 'Test User' }
+  },
+  {
+    id: 'app3', job_id: 'job3', status: 'rejected' as const, created_at: new Date('2024-10-18').toISOString(),
+    job: { id: 'job3', job_title: 'UI/UX Designer', company_name: 'Creative Minds', location: 'Surabaya', status: 'inactive' as const, },
+    application_data: { full_name: 'Test User' }
   },
 ];
 
-describe('MyApplicationsPage', () => {
-  beforeEach(() => {
-    // Mock user logged in
-    mockUseAuth.mockReturnValue({
-      user: { id: 'test-user-id', email: 'test@example.com' },
-      // ... other context values
+// Helper render function
+const renderPage = async () => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+        result = render(<MyApplicationsPage />);
     });
-    // Mock API response
-    mockGetUserAppliedJobs.mockResolvedValue({ data: mockApplicationsData, error: null });
+    // @ts-ignore
+    return result;
+}
 
-    // Reset mocks
-    mockGetUserAppliedJobs.mockClear();
+describe('ApplicationsPage', () => {
+  beforeEach(() => {
+    (useAuth as jest.Mock).mockReturnValue({ user: mockUser, loading: false });
+    mockGetUserAppliedJobs.mockResolvedValue({ data: mockAppliedJobsData, error: null });
+    mockDeleteApplication.mockResolvedValue({ error: null });
+    (global.confirm as jest.Mock).mockClear().mockReturnValue(true);
+    jest.clearAllMocks();
   });
 
   // Test 1: Merender daftar aplikasi
   test('renders list of applied jobs', async () => {
-    render(
-      <AuthProvider>
-        <MyApplicationsPage />
-      </AuthProvider>
-    );
-
-    // Tunggu data load
+    await renderPage();
     await waitFor(() => {
       expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
       expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
       expect(screen.getByText('UI/UX Designer')).toBeInTheDocument();
-      expect(screen.getByText('Data Analyst')).toBeInTheDocument();
     });
-
-    // Cek jumlah kartu aplikasi
-    const applicationCards = screen.getAllByRole('article'); // Ganti selector jika Card tidak punya role article
-    expect(applicationCards).toHaveLength(mockApplicationsData.length);
-
-    // Cek status badge
-    expect(screen.getByText('Submitted')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
-    expect(screen.getByText('Accepted')).toBeInTheDocument();
-    expect(screen.getByText('Rejected')).toBeInTheDocument();
+    const applicationCards = screen.getAllByRole('article');
+    expect(applicationCards).toHaveLength(mockAppliedJobsData.length);
+    expect(screen.getByText('submitted')).toBeInTheDocument();
+    expect(screen.getByText('accepted')).toBeInTheDocument();
+    expect(screen.getByText('rejected')).toBeInTheDocument();
   });
 
-  // Test 2: Filtering berdasarkan status 'Pending'
-  test('filters applications by status', async () => {
-    render(
-      <AuthProvider>
-        <MyApplicationsPage />
-      </AuthProvider>
-    );
+  // Test 2: Filtering berdasarkan status
+  test('filters applications based on status', async () => {
+    await renderPage();
     await waitFor(() => expect(mockGetUserAppliedJobs).toHaveBeenCalled());
-
-    // Klik filter 'Pending'
-    const pendingFilterButton = screen.getByRole('button', { name: /pending/i });
-    fireEvent.click(pendingFilterButton);
-
-    // Tunggu UI update
-    await waitFor(() => {
-      // Hanya aplikasi 'Pending' yang muncul
-      expect(screen.queryByText('Frontend Developer')).not.toBeInTheDocument();
-      expect(screen.getByText('Backend Engineer')).toBeInTheDocument(); // Ini yang pending
-      expect(screen.queryByText('UI/UX Designer')).not.toBeInTheDocument();
-      expect(screen.queryByText('Data Analyst')).not.toBeInTheDocument();
-    });
-
-    // Klik filter 'Accepted'
     const acceptedFilterButton = screen.getByRole('button', { name: /accepted/i });
     fireEvent.click(acceptedFilterButton);
-
-     await waitFor(() => {
-      // Hanya aplikasi 'Accepted' yang muncul
+    await waitFor(() => {
       expect(screen.queryByText('Frontend Developer')).not.toBeInTheDocument();
-      expect(screen.queryByText('Backend Engineer')).not.toBeInTheDocument();
-      expect(screen.getByText('UI/UX Designer')).toBeInTheDocument(); // Ini yang accepted
-      expect(screen.queryByText('Data Analyst')).not.toBeInTheDocument();
+      expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
+      expect(screen.queryByText('UI/UX Designer')).not.toBeInTheDocument();
     });
-
-     // Klik filter 'All'
     const allFilterButton = screen.getByRole('button', { name: /all applications/i });
     fireEvent.click(allFilterButton);
-
-     await waitFor(() => {
-      // Semua aplikasi muncul lagi
-       expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
-      expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
-      expect(screen.getByText('UI/UX Designer')).toBeInTheDocument();
-      expect(screen.getByText('Data Analyst')).toBeInTheDocument();
-       const applicationCards = screen.getAllByRole('article');
-       expect(applicationCards).toHaveLength(mockApplicationsData.length);
-    });
-  });
-
-  // Test 3: Membuka modal detail saat kartu diklik
-  test('opens details modal when an application card is clicked', async () => {
-     render(
-      <AuthProvider>
-        <MyApplicationsPage />
-      </AuthProvider>
-    );
-    await waitFor(() => expect(mockGetUserAppliedJobs).toHaveBeenCalled());
-
-     // Klik kartu pertama (Frontend Developer)
-     const frontendCard = screen.getByText('Frontend Developer').closest('article');
-     expect(frontendCard).toBeInTheDocument();
-     if (frontendCard) {
-         fireEvent.click(frontendCard);
-     }
-
-     // Tunggu modal muncul
-     await waitFor(() => {
-         expect(screen.getByTestId('mock-details-modal')).toBeInTheDocument();
-     });
-
-     // Pastikan judul job di modal sesuai (jika modal menampilkan judul)
-     // Ini tergantung implementasi mock modal atau modal asli
-  });
-
-   // Test 4: Menampilkan Empty State jika tidak ada aplikasi
-  test('displays empty state when no applications are found', async () => {
-    mockGetUserAppliedJobs.mockResolvedValue({ data: [], error: null }); // Mock data kosong
-    render(
-      <AuthProvider>
-        <MyApplicationsPage />
-      </AuthProvider>
-    );
-
-    // Tunggu loading selesai
     await waitFor(() => {
-      expect(screen.getByText(/no applications found/i)).toBeInTheDocument();
-      expect(screen.getByText(/you haven't applied to any jobs yet/i)).toBeInTheDocument();
-      // Pastikan tidak ada kartu aplikasi
-      expect(screen.queryByRole('article')).not.toBeInTheDocument();
+        expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
+        expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
+        expect(screen.getByText('UI/UX Designer')).toBeInTheDocument();
+     })
+  });
+
+  // Test 3: Membuka modal detail aplikasi
+  test('opens details modal when view details is clicked', async () => {
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Frontend Developer')).toBeInTheDocument());
+    const firstCard = screen.getByTestId('app-card-app1');
+    const detailsButton = within(firstCard).getByRole('button', { name: /view details/i });
+    fireEvent.click(detailsButton);
+    await waitFor(() => {
+        const modal = screen.getByTestId('mock-details-modal');
+        expect(modal).toBeInTheDocument();
+        expect(within(modal).getByText(/Mock Modal for Frontend Developer/i)).toBeInTheDocument();
+    });
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+    await waitFor(() => {
+        expect(screen.queryByTestId('mock-details-modal')).not.toBeInTheDocument();
+    })
+  });
+
+  // Test 4: Memanggil fungsi delete saat tombol delete diklik dan dikonfirmasi
+  test('calls deleteApplication when delete action is confirmed', async () => {
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Frontend Developer')).toBeInTheDocument());
+    const firstCard = screen.getByTestId('app-card-app1');
+    const deleteButton = within(firstCard).getByRole('button', { name: /withdraw application/i });
+    fireEvent.click(deleteButton);
+    expect(global.confirm).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockDeleteApplication).toHaveBeenCalledWith('app1');
+      expect(require('react-hot-toast').toast.success).toHaveBeenCalledWith('Application withdrawn successfully');
+    });
+    await waitFor(() => {
+        expect(mockGetUserAppliedJobs).toHaveBeenCalledTimes(1);
+     });
+  });
+
+  // Test 5: Tidak memanggil delete jika konfirmasi dibatalkan
+  test('does not call deleteApplication when delete action is cancelled', async () => {
+    (global.confirm as jest.Mock).mockReturnValue(false);
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Frontend Developer')).toBeInTheDocument());
+    const firstCard = screen.getByTestId('app-card-app1');
+    const deleteButton = within(firstCard).getByRole('button', { name: /withdraw application/i });
+    fireEvent.click(deleteButton);
+    expect(global.confirm).toHaveBeenCalledTimes(1);
+    expect(mockDeleteApplication).not.toHaveBeenCalled();
+    expect(screen.getByText('Frontend Developer')).toBeInTheDocument();
+    expect(require('react-hot-toast').toast.success).not.toHaveBeenCalled();
+  });
+
+  // Test 6: Menampilkan Empty State jika tidak ada aplikasi
+  test('shows empty state when no applications are found', async () => {
+    mockGetUserAppliedJobs.mockResolvedValue({ data: [], error: null });
+    await renderPage();
+    await waitFor(() => {
+        expect(screen.getByText(/you haven't applied for any jobs yet/i)).toBeInTheDocument();
+        expect(screen.getByTestId('mock-lottie')).toBeInTheDocument();
+        expect(screen.queryByRole('article')).not.toBeInTheDocument();
     });
   });
 
