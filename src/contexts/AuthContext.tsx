@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
-import { UserRole, getUserRole } from '@/lib/supabase/auth'
+import { UserRole, getUserRole, handleSignOut } from '@/lib/supabase/auth' // Import handleSignOut
 import { LoginSplashScreen } from '@/components/auth/LoginSplashScreen'
 
 interface AuthContextType {
@@ -14,6 +14,7 @@ interface AuthContextType {
   splashRedirectTo: string | null
   setShowSplashScreen: (show: boolean) => void
   setSplashRedirectTo: (url: string | null) => void
+  logout: () => Promise<{ error: any | null }> // Add logout function signature
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   splashRedirectTo: null,
   setShowSplashScreen: () => {},
   setSplashRedirectTo: () => {},
+  logout: async () => ({ error: new Error("Logout function not implemented") }), // Provide a default dummy function
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -53,8 +55,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Define the logout function using handleSignOut
+  const logout = async () => {
+    const { error } = await handleSignOut();
+    if (!error) {
+        // Optionally reset state here if needed upon successful logout
+        setUser(null);
+        setRole(null);
+    }
+    return { error };
+  }
+
   return (
-    <AuthContext.Provider value={{ user, role, loading, showSplashScreen, splashRedirectTo, setShowSplashScreen, setSplashRedirectTo }}>
+    <AuthContext.Provider value={{
+        user,
+        role,
+        loading,
+        showSplashScreen,
+        splashRedirectTo,
+        setShowSplashScreen,
+        setSplashRedirectTo,
+        logout // Provide the actual logout function
+    }}>
       {children}
       {showSplashScreen && (
         <LoginSplashScreen

@@ -1,23 +1,30 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext' // Correct import
 import { NotificationBadge } from '@/components/ui/NotificationBadge'
 import { Briefcase, User, LogOut, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast' // Import toast
 
 export function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuth() // Now 'logout' exists here
   const router = useRouter()
 
   const handleLogout = async () => {
-    await logout()
-    router.push('/login')
+    const { error } = await logout() // Call the logout function from context
+    if (error) {
+      toast.error('Error signing out') // Use toast for feedback
+    } else {
+      toast.success('Signed out successfully') // Use toast for feedback
+      router.push('/auth') // Redirect to auth page after logout
+    }
   }
 
   if (!user) return null
 
+  // Rest of the component remains the same...
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-md bg-white/90">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,7 +69,7 @@ export function Navbar() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleLogout}
+                onClick={handleLogout} // Calls the corrected handleLogout
                 className="flex items-center space-x-1"
               >
                 <LogOut className="h-4 w-4" />
