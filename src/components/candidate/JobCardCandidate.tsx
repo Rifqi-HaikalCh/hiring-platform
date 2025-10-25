@@ -211,12 +211,12 @@ export function JobCardCandidate({ job, isActive, isApplied = false, onClick }: 
       <Card
         className={`relative p-4 cursor-pointer transition-all overflow-hidden ${
           isApplied
-            ? 'opacity-60 bg-gray-50 border border-gray-300 cursor-default'
+            ? 'opacity-60 bg-gray-50 border border-gray-300'
             : isActive
             ? 'border-l-4 border-l-teal-600 bg-teal-50 border border-teal-200 shadow-lg shadow-teal-500/10'
             : 'border-l-4 border-l-transparent border border-gray-200 hover:border-teal-300 hover:shadow-xl shadow-lg'
         }`}
-        onClick={() => !isApplied && onClick(job.id)}
+        onClick={() => onClick(job.id)}
       >
         {/* Border glow effect - disable for applied jobs */}
         {!isApplied && (

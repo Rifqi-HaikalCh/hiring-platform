@@ -57,6 +57,24 @@ export async function updateApplicationStatus(
   status: 'pending' | 'accepted' | 'rejected'
 ) {
   try {
+    // Get application data with job info before updating
+    const { data: application, error: fetchError } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        jobs!inner (
+          id,
+          job_title
+        )
+      `)
+      .eq('id', applicationId)
+      .single()
+
+    if (fetchError) {
+      throw fetchError
+    }
+
+    // Update status
     const { data, error } = await supabase
       .from('applications')
       .update({ status })
@@ -66,6 +84,18 @@ export async function updateApplicationStatus(
 
     if (error) {
       throw error
+    }
+
+    // Send notification to candidate
+    if (application && application.applicant_id && application.jobs) {
+      const { notifyApplicationStatusChange } = await import('./notifications')
+      await notifyApplicationStatusChange(
+        application.applicant_id,
+        applicationId,
+        application.job_id,
+        application.jobs.job_title,
+        status
+      )
     }
 
     return { data: data as Application, error: null }
@@ -195,6 +225,7 @@ export async function getAcceptedApplicationsCount(jobId: string) {
       throw error
     }
 
+    console.log(`[getAcceptedApplicationsCount] Job ${jobId}: ${count || 0} accepted applications`)
     return { data: count || 0, error: null }
   } catch (error) {
     console.error('Get accepted count error:', error)
