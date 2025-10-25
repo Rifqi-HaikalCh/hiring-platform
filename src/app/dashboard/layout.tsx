@@ -1,6 +1,6 @@
 'use client'
 
-import { User, LogOut, Briefcase, FileText, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { User, LogOut, Briefcase, FileText, Menu, X, ChevronLeft, ChevronRight, Bell } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleSignOut } from '@/lib/supabase/auth'
 import { Button } from '@/components/ui/Button'
@@ -12,10 +12,12 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { LogoutConfirmModal } from '@/components/modals/LogoutConfirmModal'
+import { NotificationBadge } from '@/components/ui/NotificationBadge';
 
 const navigation = [
   { name: 'Job Listings', href: '/dashboard', icon: Briefcase },
   { name: 'My Applications', href: '/dashboard/applications', icon: FileText },
+  { name: 'Notifications', href: '/notifications', icon: Bell },
 ]
 
 const logoutItem = { name: 'Logout', icon: LogOut, isLogout: true }
@@ -88,33 +90,44 @@ export default function CandidateLayout({
             </button>
           )}
 
-          {/* Navigation */}
+{/* Navigation */}
           <nav className="flex-1 px-3 py-6 space-y-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/'))
+              const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/'));
+              const isNotifications = item.name === 'Notifications'; // Tandai item notifikasi
+
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+                    'group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200', // Tambahkan justify-between
                     isActive
                       ? 'bg-teal-50 text-teal-700 border-l-4 border-teal-600 pl-2.5'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900',
-                    isSidebarCollapsed && 'justify-center'
+                    isSidebarCollapsed && 'justify-center' // Tetap tengahkan jika collapsed
                   )}
                   title={isSidebarCollapsed ? item.name : undefined}
                 >
-                  <item.icon
-                    className={cn(
-                      'h-5 w-5 flex-shrink-0',
-                      isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600',
-                      !isSidebarCollapsed && 'mr-3'
-                    )}
-                  />
-                  {!isSidebarCollapsed && item.name}
+                  {/* --- 3. Tampilkan Ikon dan Teks --- */}
+                  <div className="flex items-center">
+                    <item.icon
+                      className={cn(
+                        'h-5 w-5 flex-shrink-0',
+                        isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600',
+                        !isSidebarCollapsed && 'mr-3'
+                      )}
+                    />
+                    {!isSidebarCollapsed && item.name}
+                  </div>
+
+                  {/* --- 4. Tampilkan Badge Khusus untuk Notifikasi --- */}
+                  {!isSidebarCollapsed && isNotifications && (
+                    // Letakkan Badge di sini, gunakan styling minimal karena sudah ada di komponennya
+                    <NotificationBadge className="p-0 hover:bg-transparent" />
+                  )}
                 </Link>
-              )
+              );
             })}
 
             {/* Logout Button */}
@@ -189,32 +202,41 @@ export default function CandidateLayout({
                   </div>
                 </div>
 
-                <nav className="px-3 py-6 space-y-1">
+ <nav className="px-3 py-6 space-y-1">
                   {navigation.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/'))
+                    const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href + '/'));
+                    const isNotifications = item.name === 'Notifications';
+
                     return (
                       <Link
                         key={item.name}
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
                         className={cn(
-                          'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
+                          'group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200', // justify-between
                           isActive
                             ? 'bg-teal-50 text-teal-700 border-l-4 border-teal-600 pl-2.5'
                             : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                         )}
                       >
-                        <item.icon
-                          className={cn(
-                            'mr-3 h-5 w-5 flex-shrink-0',
-                            isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
-                          )}
-                        />
-                        {item.name}
+                         {/* Ikon dan Teks */}
+                        <div className="flex items-center">
+                          <item.icon
+                            className={cn(
+                              'mr-3 h-5 w-5 flex-shrink-0',
+                              isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
+                            )}
+                          />
+                          {item.name}
+                        </div>
+                        {/* Badge Notifikasi */}
+                        {isNotifications && (
+                          <NotificationBadge className="p-0 hover:bg-transparent" />
+                        )}
                       </Link>
-                    )
+                    );
                   })}
-
+                  
                   {/* Logout Button - Mobile */}
                   <button
                     onClick={() => {

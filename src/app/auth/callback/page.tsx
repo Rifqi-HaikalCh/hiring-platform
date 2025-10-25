@@ -4,10 +4,12 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AuthCallback() {
   const router = useRouter()
-
+  const { setShowSplashScreen, setSplashRedirectTo } = useAuth();
+  
   useEffect(() => {
     const handleCallback = async () => {
       try {
@@ -24,48 +26,40 @@ export default function AuthCallback() {
         if (session) {
           // Check email verification for password-based signups
           const emailConfirmed = session.user.email_confirmed_at
-          const isOAuthUser = session.user.app_metadata.provider !== 'email'
+const role = session.user.user_metadata?.role;
+          const isOAuthUser = session.user.app_metadata.provider !== 'email'; // Cek jika OAuth
 
-          // Get user role from metadata
-          const role = session.user.user_metadata?.role
-
-          // For OAuth users (Google), email is auto-verified
-          // For email/password users, check if email is confirmed
-          if (!isOAuthUser && !emailConfirmed) {
-            toast.error('Silakan verifikasi email Anda terlebih dahulu. Periksa inbox Anda.')
-            await supabase.auth.signOut()
-            router.push('/auth')
-            return
-          }
-
-          // Check if OAuth user has a role assigned
+          // ... (OAuth role selection logic jika role belum ada)
           if (isOAuthUser && !role) {
-            // First time OAuth user - redirect to role selection
-            router.push('/auth/select-role')
-            return
+             router.push('/auth/select-role');
+             return;
           }
 
-          toast.success('Berhasil masuk!')
+          toast.success('Berhasil masuk!');
 
-          // Redirect based on role
+          // ---> Logika Kondisional Splash Screen <---
           if (role === 'admin') {
-            router.push('/admin/dashboard')
+            // Jika admin, langsung redirect
+            router.push('/admin/dashboard');
           } else {
-            router.push('/dashboard')
+            // Jika candidate (atau default), tampilkan splash screen
+            setSplashRedirectTo('/dashboard'); // Atur tujuan setelah splash
+            setShowSplashScreen(true);         // Tampilkan splash screen
           }
+          // ----------------------------------------
+
         } else {
-          // No session found, redirect to auth
-          router.push('/auth')
+          router.push('/auth');
         }
       } catch (error) {
-        console.error('Callback error:', error)
-        toast.error('Terjadi kesalahan. Silakan coba lagi.')
-        router.push('/auth')
+        console.error('Callback error:', error);
+        toast.error('Terjadi kesalahan. Silakan coba lagi.');
+        router.push('/auth');
       }
-    }
+    };
 
-    handleCallback()
-  }, [router])
+    handleCallback();
+  }, [router, setShowSplashScreen, setSplashRedirectTo]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

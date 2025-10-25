@@ -79,23 +79,29 @@ export default function AuthPage() {
         return
       }
 
-      if (result?.user) {
-        const userRole = result.user.user_metadata?.role
-        toast.success('Login berhasil!')
+if (result?.user) {
+        const userRole = result.user.user_metadata?.role; // Dapatkan peran pengguna
+        toast.success('Login berhasil!');
 
-        // Set redirect URL based on role
-        const redirectUrl = userRole === 'admin' ? '/admin/dashboard' : '/dashboard'
-        setSplashRedirectTo(redirectUrl)
+        // ---> Logika Kondisional Splash Screen <---
+        if (userRole === 'admin') {
+          // Jika admin, langsung redirect tanpa splash screen
+          router.push('/admin/dashboard');
+        } else {
+          // Jika candidate (atau peran lain selain admin),
+          // atur redirect URL dan tampilkan splash screen
+          setSplashRedirectTo('/dashboard'); // Atur tujuan setelah splash
+          setShowSplashScreen(true);         // Tampilkan splash screen
+        }
+        // ------------------------------------------
 
-        // Show splash screen
-        setShowSplashScreen(true)
       }
     } catch (error) {
-      toast.error('Terjadi kesalahan yang tidak terduga')
+      toast.error('Terjadi kesalahan yang tidak terduga');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Login with magic link
   const onMagicLink = async (data: EmailFormData) => {
@@ -160,20 +166,22 @@ export default function AuthPage() {
   }
 
   // Google Sign In
-  const onGoogleSignIn = async () => {
-    setLoading(true)
+const onGoogleSignIn = async () => {
+    setLoading(true);
     try {
-      const { error } = await handleGoogleSignIn()
+      // Panggil handleGoogleSignIn, redirect akan terjadi ke /auth/callback
+      const { error } = await handleGoogleSignIn();
 
       if (error) {
-        toast.error((error as any)?.message || 'Google sign in gagal')
+        toast.error((error as any)?.message || 'Google sign in gagal');
+        setLoading(false); // Hentikan loading jika error
       }
-      // The redirect happens automatically
+      // Jangan set loading false di sini, biarkan callback yang handle
     } catch (error) {
-      toast.error('Terjadi kesalahan yang tidak terduga')
-      setLoading(false)
+      toast.error('Terjadi kesalahan yang tidak terduga');
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen relative z-10 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
