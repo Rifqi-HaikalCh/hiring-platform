@@ -1,3 +1,4 @@
+// src/app/notifications/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -80,7 +81,13 @@ export default function NotificationsPage() {
     toast.success('All notifications marked as read')
   }
 
+  // *** INI PERBAIKANNYA ***
   const handleDelete = async (notificationId: string) => {
+    // Tambahkan dialog konfirmasi
+    if (!window.confirm('Are you sure you want to delete this notification?')) {
+      return // Batal jika user menekan 'Cancel'
+    }
+
     const { error } = await deleteNotification(notificationId)
 
     if (error) {
@@ -256,7 +263,7 @@ export default function NotificationsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDelete(notification.id)
+                              handleDelete(notification.id) // onClick ini tidak perlu diubah
                             }}
                             className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
                           >
