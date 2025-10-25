@@ -41,7 +41,7 @@ const transformJobForAdmin = (job: any): {
   ...(job.job_type && { jobType: job.job_type }),
   ...(job.company_name && { companyName: job.company_name }),
   ...((job.company || job.company_name === undefined) && job.company && { companyName: job.company }),
-  ...(job.company_logo && { companyLogo: job.company_logo }),
+  ...(job.company_logo_url && { companyLogo: job.company_logo_url }),
   ...(job.location && { location: job.location }),
   ...(job.department && { department: job.department })
 })

@@ -105,9 +105,9 @@ const countryCodeOptions = [
 
 // Custom format for selected value - only flag and code
 const formatSelectedValue = ({ flag, value }: any) => (
-  <div className="flex items-center">
-    <span className="mr-1">{flag}</span>
-    <span>{value}</span>
+  <div className="flex items-center gap-1">
+    <span className="text-base leading-none">{flag}</span>
+    <span className="text-xs font-medium">{value}</span>
   </div>
 )
 
@@ -545,8 +545,8 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                           <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-2">
                             Phone number {isFieldRequired('phone_number') && <span className="text-red-500">*</span>}
                           </label>
-                          <div className="flex space-x-2">
-                            <div className="w-32">
+                          <div className="flex gap-2">
+                            <div className="w-[110px] shrink-0">
                               <Select
                                 options={countryCodeOptions}
                                 value={selectedCountryCode}
@@ -560,7 +560,7 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                                 }}
                               />
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <Input
                                 id="phone_number"
                                 type="tel"

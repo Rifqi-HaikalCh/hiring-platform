@@ -153,6 +153,103 @@ export async function getUserAppliedJobIds(userId: string) {
   }
 }
 
+// Get application statuses for all jobs a user has applied to
+export async function getUserApplicationStatuses(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('applications')
+      .select('job_id, status')
+      .eq('applicant_id', userId)
+
+    if (error) {
+      console.error('Get application statuses error:', error)
+      throw error
+    }
+
+    // Create a map of job_id to status
+    const statusMap: Record<string, 'submitted' | 'pending' | 'accepted' | 'rejected'> = {}
+    data?.forEach(app => {
+      if (app.job_id && app.status) {
+        statusMap[app.job_id] = app.status as 'submitted' | 'pending' | 'accepted' | 'rejected'
+      }
+    })
+
+    return { data: statusMap, error: null }
+  } catch (error) {
+    console.error('Get application statuses error:', error)
+    return { data: {}, error }
+  }
+}
+
+// Get count of accepted applications for a job
+export async function getAcceptedApplicationsCount(jobId: string) {
+  try {
+    const { data, error, count } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('job_id', jobId)
+      .eq('status', 'accepted')
+
+    if (error) {
+      console.error('Get accepted count error:', error)
+      throw error
+    }
+
+    return { data: count || 0, error: null }
+  } catch (error) {
+    console.error('Get accepted count error:', error)
+    return { data: 0, error }
+  }
+}
+
+// Check and auto-deactivate job if candidates needed is met
+export async function checkAndDeactivateJobIfFull(jobId: string) {
+  try {
+    // Get job details directly from database to avoid circular dependency
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single()
+
+    if (jobError || !job) {
+      console.error('Failed to get job:', jobError)
+      return { success: false, error: jobError }
+    }
+
+    // Get accepted count
+    const { data: acceptedCount, error: countError } = await getAcceptedApplicationsCount(jobId)
+    if (countError) {
+      console.error('Failed to get accepted count:', countError)
+      return { success: false, error: countError }
+    }
+
+    console.log(`Checking job ${jobId}: ${acceptedCount}/${job.candidates_needed} accepted, status: ${job.status}`)
+
+    // Check if job should be deactivated
+    if (acceptedCount >= job.candidates_needed && job.status === 'active') {
+      // Update job status directly
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update({ status: 'inactive' })
+        .eq('id', jobId)
+
+      if (updateError) {
+        console.error('Failed to deactivate job:', updateError)
+        return { success: false, error: updateError }
+      }
+
+      console.log(`Job ${jobId} auto-deactivated: ${acceptedCount}/${job.candidates_needed} candidates accepted`)
+      return { success: true, deactivated: true, message: 'Job auto-deactivated as candidates needed quota is met' }
+    }
+
+    return { success: true, deactivated: false }
+  } catch (error) {
+    console.error('Check and deactivate job error:', error)
+    return { success: false, error }
+  }
+}
+
 // Get all jobs a user has applied to with full details
 export async function getUserAppliedJobs(userId: string) {
   try {

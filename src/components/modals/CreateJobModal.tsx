@@ -21,7 +21,7 @@ interface JobFormData {
   job_type: string
   job_description: string
   company_name: string
-  company_logo: string
+  company_logo_url: string
   location: string
   department: string
   required_skills: string
@@ -159,7 +159,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
       job_type: 'Full-time',
       job_description: '',
       company_name: '',
-      company_logo: '',
+      company_logo_url: '',
       location: '',
       department: '',
       required_skills: '',
@@ -293,7 +293,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         company_name: data.company_name?.trim(),
         location: data.location?.trim(),
         department: data.department?.trim() || null,
-        company_logo: logoUrl,
+        company_logo_url: logoUrl,
         required_skills: skillsArray,
         candidates_needed: parseInt(data.candidates_needed.toString()) || 1,
         min_salary: cleanSalaryString(data.min_salary),

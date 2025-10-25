@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
+import { createPortal } from 'react-dom'
 import {
   createColumnHelper,
   flexRender,
@@ -64,6 +65,7 @@ import { getJobById, updateJob, updateJobStatus, deleteJob, Job } from '@/lib/su
 import {
   getApplicationsByJobId,
   updateApplicationStatus,
+  checkAndDeactivateJobIfFull,
   Application,
   extractCandidateData,
   CandidateData
@@ -376,6 +378,22 @@ export default function ManageCandidatesPage() {
       )
 
       toast.success(`Candidate ${newStatus === 'accepted' ? 'accepted' : newStatus === 'rejected' ? 'rejected' : 'set to pending'} successfully`)
+
+      // Check if job should be auto-deactivated when accepting a candidate
+      if (newStatus === 'accepted' && jobId) {
+        console.log('Checking if job should be auto-deactivated for job:', jobId)
+        const result = await checkAndDeactivateJobIfFull(jobId)
+        console.log('Auto-deactivate result:', result)
+
+        if (result.success && result.deactivated) {
+          // Reload job details to reflect the status change
+          const { data: updatedJob, error: refreshError } = await getJobById(jobId)
+          if (!refreshError && updatedJob) {
+            setJob(updatedJob)
+            toast('Lowongan telah otomatis dinonaktifkan karena semua posisi telah terisi')
+          }
+        }
+      }
     } catch (error) {
       toast.error('An error occurred while updating status')
     }
@@ -486,73 +504,106 @@ export default function ManageCandidatesPage() {
       cell: ({ row }) => {
         const applicationId = row.original.application_id;
         const currentStatus = row.original.status;
+        const buttonRef = React.useRef<HTMLButtonElement>(null);
+        const [menuPosition, setMenuPosition] = React.useState<{ top: number; right: number } | null>(null);
 
         return (
-          <div className="flex justify-center"> {/* Pusatkan menu Actions */}
+          <div className="flex justify-center">
             <Menu as="div" className="relative inline-block text-left">
-              <Menu.Button className="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
-                <MoreHorizontal className="h-5 w-5" />
-              </Menu.Button>
+              {({ open }) => {
+                // Calculate position when menu opens
+                React.useEffect(() => {
+                  if (open && buttonRef.current) {
+                    const rect = buttonRef.current.getBoundingClientRect();
+                    setMenuPosition({
+                      top: rect.bottom + 8,
+                      right: window.innerWidth - rect.right
+                    });
+                  }
+                }, [open]);
 
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-              >
-                <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                  <div className="py-1">
-                    {currentStatus !== 'accepted' && (
-                      <Menu.Item>
-                        {({ active }) => (
-                          <button
-                            onClick={() => handleStatusChange(applicationId, 'accepted')}
-                            className={`${
-                              active ? 'bg-green-50 text-green-900' : 'text-gray-700'
-                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                          >
-                            <CheckCircle className="mr-3 h-4 w-4 text-green-500" />
-                            Accept
-                          </button>
-                        )}
-                      </Menu.Item>
+                return (
+                  <>
+                    <Menu.Button
+                      ref={buttonRef}
+                      className="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                    >
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Menu.Button>
+
+                    {open && menuPosition && typeof document !== 'undefined' && createPortal(
+                      <Transition
+                        as={Fragment}
+                        show={open}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items
+                          static
+                          className="fixed w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[9999]"
+                          style={{
+                            top: `${menuPosition.top}px`,
+                            right: `${menuPosition.right}px`
+                          }}
+                        >
+                          <div className="py-1">
+                            {currentStatus !== 'accepted' && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() => handleStatusChange(applicationId, 'accepted')}
+                                    className={`${
+                                      active ? 'bg-green-50 text-green-900' : 'text-gray-700'
+                                    } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                                  >
+                                    <CheckCircle className="mr-3 h-4 w-4 text-green-500" />
+                                    Accept
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            )}
+                            {currentStatus !== 'rejected' && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() => handleStatusChange(applicationId, 'rejected')}
+                                    className={`${
+                                      active ? 'bg-red-50 text-red-900' : 'text-gray-700'
+                                    } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                                  >
+                                    <XCircle className="mr-3 h-4 w-4 text-red-500" />
+                                    Reject
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            )}
+                            {(currentStatus === 'accepted' || currentStatus === 'rejected') && (
+                              <Menu.Item>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() => handleStatusChange(applicationId, 'pending')}
+                                    className={`${
+                                      active ? 'bg-yellow-50 text-yellow-900' : 'text-gray-700'
+                                    } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                                  >
+                                    <Clock className="mr-3 h-4 w-4 text-yellow-500" />
+                                    Mark as Pending
+                                  </button>
+                                )}
+                              </Menu.Item>
+                            )}
+                          </div>
+                        </Menu.Items>
+                      </Transition>,
+                      document.body
                     )}
-                    {currentStatus !== 'rejected' && (
-                      <Menu.Item>
-                        {({ active }) => (
-                          <button
-                            onClick={() => handleStatusChange(applicationId, 'rejected')}
-                            className={`${
-                              active ? 'bg-red-50 text-red-900' : 'text-gray-700'
-                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                          >
-                            <XCircle className="mr-3 h-4 w-4 text-red-500" />
-                            Reject
-                          </button>
-                        )}
-                      </Menu.Item>
-                    )}
-                    {(currentStatus === 'accepted' || currentStatus === 'rejected') && (
-                      <Menu.Item>
-                        {({ active }) => (
-                          <button
-                            onClick={() => handleStatusChange(applicationId, 'pending')}
-                            className={`${
-                              active ? 'bg-yellow-50 text-yellow-900' : 'text-gray-700'
-                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                          >
-                            <Clock className="mr-3 h-4 w-4 text-yellow-500" />
-                            Mark as Pending
-                          </button>
-                        )}
-                      </Menu.Item>
-                    )}
-                  </div>
-                </Menu.Items>
-              </Transition>
+                  </>
+                );
+              }}
             </Menu>
           </div>
         );

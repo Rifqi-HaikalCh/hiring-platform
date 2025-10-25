@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Building2, MapPin } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ApplyJobModal } from '@/components/modals/ApplyJobModal'
 import type { Job as OriginalJob } from '@/lib/supabase/jobs'
 
@@ -22,9 +23,11 @@ interface Job {
 interface JobDetailsProps {
   job: Job | null
   originalJob: OriginalJob | null
+  isApplied?: boolean
+  applicationStatus?: 'submitted' | 'pending' | 'accepted' | 'rejected'
 }
 
-export function JobDetails({ job, originalJob }: JobDetailsProps) {
+export function JobDetails({ job, originalJob, isApplied = false, applicationStatus }: JobDetailsProps) {
   const [showApplyModal, setShowApplyModal] = useState(false)
 
   if (!job) {
@@ -83,15 +86,49 @@ export function JobDetails({ job, originalJob }: JobDetailsProps) {
         </p>
       </div>
 
-      {/* Apply Button */}
+      {/* Apply Button or Application Status */}
       <div className="mb-8">
-        <Button
-          onClick={() => setShowApplyModal(true)}
-          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 shadow-lg shadow-orange-500/30"
-          size="lg"
-        >
-          Apply for this Position
-        </Button>
+        {isApplied && applicationStatus ? (
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <StatusBadge status={applicationStatus} showIcon={true} />
+            </div>
+            <p className="text-gray-700 leading-relaxed">
+              {applicationStatus === 'submitted' && (
+                "Your application has been sent. Please wait for it to be processed. Good luck!"
+              )}
+              {applicationStatus === 'pending' && (
+                "Your application is currently under review. We'll update you soon!"
+              )}
+              {applicationStatus === 'accepted' && (
+                "Congratulations! Your application has been accepted. Expect further communication!"
+              )}
+              {applicationStatus === 'rejected' && (
+                "Thank you for your interest. Unfortunately, we've decided not to move forward with your application at this time."
+              )}
+            </p>
+          </div>
+        ) : originalJob && originalJob.status === 'inactive' ? (
+          <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100">
+                <span className="text-red-600 text-xl font-bold">!</span>
+              </div>
+              <h3 className="text-lg font-semibold text-red-800">Tidak Lagi Menerima Lamaran</h3>
+            </div>
+            <p className="text-red-700 leading-relaxed">
+              Maaf, lowongan pekerjaan ini sudah tidak aktif. Semua posisi yang dibutuhkan telah terisi atau lowongan telah ditutup.
+            </p>
+          </div>
+        ) : (
+          <Button
+            onClick={() => setShowApplyModal(true)}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 shadow-lg shadow-orange-500/30"
+            size="lg"
+          >
+            Apply for this Position
+          </Button>
+        )}
       </div>
 
       {/* Job Description */}

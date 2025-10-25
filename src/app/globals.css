@@ -120,6 +120,10 @@ body::before {
 .react-select-container .react-select__single-value {
   @apply text-gray-900;
   margin: 0;
+  font-size: 0.813rem; /* Slightly smaller font for compact display */
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .react-select-container .react-select__indicator-separator {
@@ -317,4 +321,27 @@ body::before {
 
 .animate-loading-bar {
   animation: loading-bar 2s ease-in-out infinite;
+}
+
+/* Celebratory glow animation for accepted status badge */
+@keyframes glow-burst {
+  0%, 100% {
+    box-shadow:
+      0 0 5px rgba(16, 185, 129, 0.3),
+      0 0 10px rgba(16, 185, 129, 0.2),
+      0 0 15px rgba(16, 185, 129, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 10px rgba(16, 185, 129, 0.6),
+      0 0 20px rgba(16, 185, 129, 0.4),
+      0 0 30px rgba(16, 185, 129, 0.2),
+      0 0 40px rgba(16, 185, 129, 0.1);
+    transform: scale(1.02);
+  }
+}
+
+.animate-glow-burst {
+  animation: glow-burst 2s ease-in-out infinite;
 }

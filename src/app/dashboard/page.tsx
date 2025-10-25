@@ -6,7 +6,7 @@ import { JobDetails } from '@/components/candidate/JobDetails'
 import { Footer } from '@/components/layout/Footer'
 import { Card } from '@/components/ui/Card'
 import { getJobs, type Job } from '@/lib/supabase/jobs'
-import { getUserAppliedJobIds } from '@/lib/supabase/applications'
+import { getUserAppliedJobIds, getUserApplicationStatuses } from '@/lib/supabase/applications'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 import { Search, SlidersHorizontal, X, ArrowLeft } from 'lucide-react'
@@ -32,7 +32,7 @@ const transformJobForCandidate = (job: Job) => {
     },
     type: job.job_type,
     jobType: job.job_type,
-    companyLogo: job.company_logo,
+    companyLogo: job.company_logo_url,
     description: descriptionArray
   }
 }
@@ -42,10 +42,15 @@ export default function CandidateDashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([])
+  const [applicationStatuses, setApplicationStatuses] = useState<Record<string, 'submitted' | 'pending' | 'accepted' | 'rejected'>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filterJobType, setFilterJobType] = useState<string>('all')
   const [filterLocation, setFilterLocation] = useState<string>('all')
+  const [filterCompany, setFilterCompany] = useState<string>('all')
+  const [filterRecent, setFilterRecent] = useState<boolean>(false)
+  const [filterSalaryMin, setFilterSalaryMin] = useState<number>(0)
+  const [filterSalaryMax, setFilterSalaryMax] = useState<number>(0)
   const [mobileView, setMobileView] = useState<'list' | 'details'>('list')
   const [isMobile, setIsMobile] = useState(false)
   const { user } = useAuth()
@@ -62,10 +67,15 @@ export default function CandidateDashboard() {
   }, [])
 
   useEffect(() => {
-    loadJobs()
-    if (user) {
-      loadAppliedJobs()
+    const loadData = async () => {
+      if (user) {
+        // Load applied jobs first
+        await loadAppliedJobs()
+      }
+      // Then load all jobs (so appliedJobIds is already populated)
+      await loadJobs()
     }
+    loadData()
   }, [user])
 
   const loadJobs = async () => {
@@ -79,12 +89,22 @@ export default function CandidateDashboard() {
         return
       }
 
-      const activeJobs = (data || []).filter(job => job.status === 'active')
-      setJobs(activeJobs)
+      // Filter jobs: show active jobs OR jobs that user has applied to (even if inactive)
+      let visibleJobs = (data || []).filter(job => {
+        // Always show active jobs
+        if (job.status === 'active') return true
+
+        // Also show inactive jobs if user has applied to them
+        if (user && appliedJobIds.includes(job.id)) return true
+
+        return false
+      })
+
+      setJobs(visibleJobs)
 
       // Select first job if available
-      if (activeJobs.length > 0 && !selectedJobId) {
-        setSelectedJobId(activeJobs[0].id)
+      if (visibleJobs.length > 0 && !selectedJobId) {
+        setSelectedJobId(visibleJobs[0].id)
       }
     } catch (error) {
       toast.error('Failed to load jobs')
@@ -98,9 +118,17 @@ export default function CandidateDashboard() {
     if (!user) return
 
     try {
-      const { data, error } = await getUserAppliedJobIds(user.id)
-      if (!error && data) {
-        setAppliedJobIds(data)
+      const [jobIdsResult, statusesResult] = await Promise.all([
+        getUserAppliedJobIds(user.id),
+        getUserApplicationStatuses(user.id)
+      ])
+
+      if (!jobIdsResult.error && jobIdsResult.data) {
+        setAppliedJobIds(jobIdsResult.data)
+      }
+
+      if (!statusesResult.error && statusesResult.data) {
+        setApplicationStatuses(statusesResult.data)
       }
     } catch (error) {
       console.error('Load applied jobs error:', error)
@@ -131,12 +159,31 @@ export default function CandidateDashboard() {
     // Location filter
     const matchesLocation = filterLocation === 'all' || job.location === filterLocation
 
-    return matchesSearch && matchesJobType && matchesLocation
+    // Company filter
+    const matchesCompany = filterCompany === 'all' || job.company === filterCompany
+
+    // Recent filter (posted within last 7 days)
+    const matchesRecent = !filterRecent || (() => {
+      const originalJob = jobs.find(j => j.id === job.id)
+      if (!originalJob) return true
+      const jobDate = new Date(originalJob.created_at)
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      return jobDate >= weekAgo
+    })()
+
+    // Salary filter
+    const matchesSalary = (filterSalaryMin === 0 && filterSalaryMax === 0) ||
+      (job.salaryRange.min >= filterSalaryMin &&
+       (filterSalaryMax === 0 || job.salaryRange.max <= filterSalaryMax))
+
+    return matchesSearch && matchesJobType && matchesLocation && matchesCompany && matchesRecent && matchesSalary
   })
 
-  // Get unique job types and locations for filters
+  // Get unique job types, locations, and companies for filters
   const jobTypes = ['all', ...Array.from(new Set(transformedJobs.map(j => j.jobType).filter(Boolean)))]
   const locations = ['all', ...Array.from(new Set(transformedJobs.map(j => j.location).filter(Boolean)))]
+  const companies = ['all', ...Array.from(new Set(transformedJobs.map(j => j.company).filter(Boolean)))]
 
   const selectedJob = filteredJobs.find(job => job.id === selectedJobId) || filteredJobs[0] || null
   const selectedOriginalJob = jobs.find(job => job.id === (selectedJob?.id || selectedJobId)) || null
@@ -146,7 +193,7 @@ export default function CandidateDashboard() {
     if (filteredJobs.length > 0 && !filteredJobs.find(j => j.id === selectedJobId)) {
       setSelectedJobId(filteredJobs[0].id)
     }
-  }, [searchQuery, filterJobType, filterLocation, filteredJobs])
+  }, [searchQuery, filterJobType, filterLocation, filterCompany, filterRecent, filterSalaryMin, filterSalaryMax, filteredJobs])
 
   if (loading) {
     return (
@@ -248,11 +295,74 @@ export default function CandidateDashboard() {
                   </div>
                 </div>
 
-                {(filterJobType !== 'all' || filterLocation !== 'all') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                  <div className="flex flex-wrap gap-2">
+                    {companies.slice(0, 6).map(company => (
+                      <button
+                        key={company}
+                        onClick={() => setFilterCompany(company)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                          filterCompany === company
+                            ? 'bg-teal-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {company === 'all' ? 'All Companies' : company}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Recent Jobs (Last 7 Days)</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setFilterRecent(!filterRecent)}
+                      className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+                        filterRecent
+                          ? 'bg-teal-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {filterRecent ? 'Showing Recent Only' : 'Show All Jobs'}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Salary Range (IDR)</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Input
+                        type="number"
+                        placeholder="Min salary"
+                        value={filterSalaryMin || ''}
+                        onChange={(e) => setFilterSalaryMin(Number(e.target.value))}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        type="number"
+                        placeholder="Max salary"
+                        value={filterSalaryMax || ''}
+                        onChange={(e) => setFilterSalaryMax(Number(e.target.value))}
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {(filterJobType !== 'all' || filterLocation !== 'all' || filterCompany !== 'all' || filterRecent || filterSalaryMin > 0 || filterSalaryMax > 0) && (
                   <button
                     onClick={() => {
                       setFilterJobType('all')
                       setFilterLocation('all')
+                      setFilterCompany('all')
+                      setFilterRecent(false)
+                      setFilterSalaryMin(0)
+                      setFilterSalaryMax(0)
                     }}
                     className="text-sm text-teal-600 hover:text-teal-700 font-medium"
                   >
@@ -311,7 +421,12 @@ export default function CandidateDashboard() {
               </Button>
             </div>
           )}
-          <JobDetails job={selectedJob} originalJob={selectedOriginalJob} />
+          <JobDetails
+            job={selectedJob}
+            originalJob={selectedOriginalJob}
+            isApplied={selectedJob ? appliedJobIds.includes(selectedJob.id) : false}
+            applicationStatus={selectedJob ? applicationStatuses[selectedJob.id] : undefined}
+          />
         </Card>
       </div>
       <Footer />

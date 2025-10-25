@@ -41,6 +41,7 @@ const StatusBadge = forwardRef<HTMLDivElement, StatusBadgeProps>(
         className={cn(
           'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200 hover:scale-105',
           config.className,
+          status === 'accepted' && 'animate-glow-burst',
           className
         )}
         {...props}

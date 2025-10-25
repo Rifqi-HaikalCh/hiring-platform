@@ -14,7 +14,7 @@ export interface Job {
   created_by?: string
   // New fields for enhanced display
   company_name?: string
-  company_logo?: string
+  company_logo_url?: string
   location?: string
   department?: string
   // Legacy fields for compatibility
