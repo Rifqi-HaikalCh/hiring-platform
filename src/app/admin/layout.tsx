@@ -16,7 +16,6 @@ import { LogoutConfirmModal } from '@/components/modals/LogoutConfirmModal'
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Jobs', href: '/admin/jobs', icon: Briefcase },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 
 const logoutItem = { name: 'Logout', icon: LogOut, isLogout: true }

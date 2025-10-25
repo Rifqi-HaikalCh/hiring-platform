@@ -68,6 +68,7 @@ import {
   extractCandidateData,
   CandidateData
 } from '@/lib/supabase/applications'
+import { cn } from '@/lib/utils'
 
 // Types
 interface CandidateRow extends CandidateData {
@@ -380,198 +381,262 @@ export default function ManageCandidatesPage() {
     }
   }
 
-  // Define table columns
+// Definisi kolom (columns) tetap sama
   const columns = useMemo(() => [
-    columnHelper.display({
+     columnHelper.display({
       id: 'select',
       header: ({ table }) => (
         <input
           type="checkbox"
-          checked={table.getIsAllRowsSelected()}
-          onChange={table.getToggleAllRowsSelectedHandler()}
+          {...{
+            checked: table.getIsAllRowsSelected(),
+            indeterminate: table.getIsSomeRowsSelected(),
+            onChange: table.getToggleAllRowsSelectedHandler(),
+          }}
           className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
         />
       ),
       cell: ({ row }) => (
         <input
           type="checkbox"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
+          {...{
+            checked: row.getIsSelected(),
+            disabled: !row.getCanSelect(),
+            indeterminate: row.getIsSomeSelected(),
+            onChange: row.getToggleSelectedHandler(),
+          }}
           className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
         />
       ),
+      size: 60, // Lebar tetap untuk checkbox
       enableSorting: false,
       enableResizing: false,
     }),
     columnHelper.accessor('full_name', {
       header: 'Full Name',
       cell: info => info.getValue() || '-',
+      size: 200, // Beri ukuran awal
     }),
     columnHelper.accessor('email', {
       header: 'Email',
       cell: info => info.getValue() || '-',
+       size: 220,
     }),
-    columnHelper.accessor('phone', {
+    columnHelper.accessor('phone', { // Pastikan key 'phone' benar sesuai extractCandidateData
       header: 'Phone',
       cell: info => info.getValue() || '-',
+       size: 150,
     }),
     columnHelper.accessor('date_of_birth', {
       header: 'Date of Birth',
-      cell: info => info.getValue() || '-',
+      cell: info => {
+        const dateStr = info.getValue();
+        if (!dateStr) return '-';
+        try {
+            // Format tanggal yang lebih ramah
+            return new Date(dateStr).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch (e) {
+            return dateStr; // Fallback jika format tidak valid
+        }
+      },
+       size: 130,
     }),
     columnHelper.accessor('domicile', {
       header: 'Domicile',
       cell: info => info.getValue() || '-',
+       size: 150,
     }),
     columnHelper.accessor('gender', {
       header: 'Gender',
       cell: info => info.getValue() || '-',
+      size: 100,
     }),
-    columnHelper.accessor('linkedin_url', {
+    columnHelper.accessor('linkedin_url', { // Pastikan key 'linkedin_url' benar
       header: 'LinkedIn',
       cell: info => {
-        const url = info.getValue()
-        return url ? (
+        const url = info.getValue();
+        // Validasi URL sederhana
+        const isValidUrl = url && (url.startsWith('http://') || url.startsWith('https://'));
+        return isValidUrl ? (
           <a
-            href={url.startsWith('http') ? url : `https://${url}`}
+            href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline"
+            className="text-blue-600 hover:text-blue-800 underline truncate max-w-[150px] inline-block"
+             title={url} // Tooltip untuk URL penuh
           >
             View Profile
           </a>
         ) : '-'
       },
+      size: 130,
     }),
     columnHelper.accessor('status', {
       header: 'Status',
       cell: info => {
-        const status = info.getValue()
-        // Map status to StatusBadge format
-        const badgeStatus = status === 'submitted' ? 'submitted' : status
-        return <StatusBadge status={badgeStatus as any} showIcon={false} />
+        const status = info.getValue();
+        const badgeStatus = status === 'submitted' ? 'submitted' : status;
+        // Berikan tipe yang benar ke StatusBadge jika perlu
+        return <StatusBadge status={badgeStatus as 'submitted' | 'pending' | 'accepted' | 'rejected'} showIcon={false} />;
       },
+      size: 120,
     }),
     columnHelper.accessor('applied_at', {
       header: 'Applied Date',
-      cell: info => new Date(info.getValue()).toLocaleDateString(),
+      cell: info => new Date(info.getValue()).toLocaleDateString('en-GB'), // Format DD/MM/YYYY
+       size: 130,
     }),
     columnHelper.display({
       id: 'actions',
-      header: 'Actions',
+      header: () => <div className="text-center">Actions</div>, // Pusatkan header Actions
       cell: ({ row }) => {
-        const applicationId = row.original.application_id
-        const currentStatus = row.original.status
+        const applicationId = row.original.application_id;
+        const currentStatus = row.original.status;
 
         return (
-          <Menu as="div" className="relative inline-block text-left">
-            <Menu.Button className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreHorizontal className="h-5 w-5" />
-            </Menu.Button>
+          <div className="flex justify-center"> {/* Pusatkan menu Actions */}
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button className="inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                <MoreHorizontal className="h-5 w-5" />
+              </Menu.Button>
 
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                <div className="py-1">
-                  {currentStatus !== 'accepted' && (
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={() => handleStatusChange(applicationId, 'accepted')}
-                          className={`${
-                            active ? 'bg-green-50 text-green-900' : 'text-gray-700'
-                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                        >
-                          <CheckCircle className="mr-3 h-4 w-4 text-green-500" />
-                          Accept
-                        </button>
-                      )}
-                    </Menu.Item>
-                  )}
-                  {currentStatus !== 'rejected' && (
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={() => handleStatusChange(applicationId, 'rejected')}
-                          className={`${
-                            active ? 'bg-red-50 text-red-900' : 'text-gray-700'
-                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                        >
-                          <XCircle className="mr-3 h-4 w-4 text-red-500" />
-                          Reject
-                        </button>
-                      )}
-                    </Menu.Item>
-                  )}
-                  {(currentStatus === 'accepted' || currentStatus === 'rejected') && (
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={() => handleStatusChange(applicationId, 'pending')}
-                          className={`${
-                            active ? 'bg-yellow-50 text-yellow-900' : 'text-gray-700'
-                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
-                        >
-                          <Clock className="mr-3 h-4 w-4 text-yellow-500" />
-                          Mark as Pending
-                        </button>
-                      )}
-                    </Menu.Item>
-                  )}
-                </div>
-              </Menu.Items>
-            </Transition>
-          </Menu>
-        )
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                  <div className="py-1">
+                    {currentStatus !== 'accepted' && (
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={() => handleStatusChange(applicationId, 'accepted')}
+                            className={`${
+                              active ? 'bg-green-50 text-green-900' : 'text-gray-700'
+                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                          >
+                            <CheckCircle className="mr-3 h-4 w-4 text-green-500" />
+                            Accept
+                          </button>
+                        )}
+                      </Menu.Item>
+                    )}
+                    {currentStatus !== 'rejected' && (
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={() => handleStatusChange(applicationId, 'rejected')}
+                            className={`${
+                              active ? 'bg-red-50 text-red-900' : 'text-gray-700'
+                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                          >
+                            <XCircle className="mr-3 h-4 w-4 text-red-500" />
+                            Reject
+                          </button>
+                        )}
+                      </Menu.Item>
+                    )}
+                    {(currentStatus === 'accepted' || currentStatus === 'rejected') && (
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={() => handleStatusChange(applicationId, 'pending')}
+                            className={`${
+                              active ? 'bg-yellow-50 text-yellow-900' : 'text-gray-700'
+                            } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                          >
+                            <Clock className="mr-3 h-4 w-4 text-yellow-500" />
+                            Mark as Pending
+                          </button>
+                        )}
+                      </Menu.Item>
+                    )}
+                  </div>
+                </Menu.Items>
+              </Transition>
+            </Menu>
+          </div>
+        );
       },
+      size: 100, // Lebar tetap untuk Actions
       enableSorting: false,
       enableResizing: false,
     }),
-  ], [handleStatusChange])
+  ], [handleStatusChange]); // Dependensi handleStatusChange
 
-  // Transform applications data for table
-  const candidateData = useMemo(() => {
-    return applications.map((app) => {
-      const candidateInfo = extractCandidateData(app.application_data)
+  // Initial column order (example, sesuaikan jika perlu)
+  useEffect(() => {
+    setColumnOrder([
+      'select',
+      'full_name',
+      'email',
+      'phone',
+      'status',
+      'applied_at',
+      'date_of_birth',
+      'domicile',
+      'gender',
+      'linkedin_url',
+      'actions',
+    ]);
+  }, []);
+
+  // Extract candidateData from applications
+  const candidateData: CandidateRow[] = useMemo(() => {
+    return applications.map(app => {
+      const candidate = extractCandidateData(app.application_data);
       return {
-        id: app.id,
-        application_id: app.id,
+        ...candidate,
+        id: app.applicant_id ?? '', // fallback if null
         status: app.status,
-        applied_at: app.created_at, // Use created_at as applied_at
-        ...candidateInfo,
-      }
-    })
-  }, [applications])
+        applied_at: app.created_at ?? '',
+        application_id: app.id,
+      };
+    });
+  }, [applications]);
 
-  // Initialize table
   const table = useReactTable({
-    data: candidateData,
-    columns,
-    state: {
-      globalFilter,
-      columnOrder,
-    },
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnOrderChange: setColumnOrder,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    columnResizeMode: 'onChange' as ColumnResizeMode,
-    enableColumnResizing: true,
-    initialState: {
-      pagination: {
-        pageSize: 10,
+      data: candidateData,
+      columns,
+      state: {
+        globalFilter,
+        columnOrder,
+        // Anda mungkin perlu menambahkan sorting state di sini jika Anda ingin menyimpannya
+        // sorting: sortingState,
       },
-    },
-  })
+      onGlobalFilterChange: setGlobalFilter,
+      onColumnOrderChange: setColumnOrder,
+      // onSortingChange: setSortingState, // Handler untuk sorting
+      getCoreRowModel: getCoreRowModel(),
+      getFilteredRowModel: getFilteredRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+      getPaginationRowModel: getPaginationRowModel(),
+      columnResizeMode: 'onChange' as ColumnResizeMode,
+      enableColumnResizing: true,
+      // Berikan ukuran kolom default
+      defaultColumn: {
+        minSize: 50,
+        size: 150, // Ukuran default jika tidak ditentukan di kolom
+        maxSize: 500,
+      },
+      initialState: {
+        pagination: {
+          pageSize: 10,
+        },
+      },
+  });
+
+  // Hitung total lebar tabel untuk min-w
+  const tableTotalSize = useMemo(
+    () => table.getTotalSize(),
+    [table.getState().columnSizing, table.getState().columnOrder] // Recalculate if sizing or order changes
+  );
+
 
   // Load job and applications data
   useEffect(() => {
@@ -648,18 +713,16 @@ export default function ManageCandidatesPage() {
     }
   }
 
-  // Handle column drag end
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-
+const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
     if (active && over && active.id !== over.id) {
-      const oldIndex = columnOrder.indexOf(active.id as string)
-      const newIndex = columnOrder.indexOf(over.id as string)
-
-      const newColumnOrder = arrayMove(columnOrder, oldIndex, newIndex)
-      setColumnOrder(newColumnOrder)
+      setColumnOrder((currentOrder) => {
+        const oldIndex = currentOrder.indexOf(active.id as string);
+        const newIndex = currentOrder.indexOf(over.id as string);
+        return arrayMove(currentOrder, oldIndex, newIndex);
+      });
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -682,248 +745,259 @@ export default function ManageCandidatesPage() {
     )
   }
 
-  return (
+return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <div className="container mx-auto px-4 py-8">
-        {/* Header with Breadcrumbs */}
+      <div className="container mx-auto px-2 sm:px-4 py-8"> {/* Kurangi padding horizontal di mobile */}
+        {/* Header with Breadcrumbs & Job Actions */}
         <div className="mb-6">
-          <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-            <button
-              onClick={() => router.push('/admin/dashboard')}
-              className="hover:text-gray-900 flex items-center"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Job List
-            </button>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-gray-900">Manage Candidates</span>
-          </nav>
+          {/* ... (Navigasi breadcrumb tetap sama) ... */}
+           <nav className="flex items-center space-x-1 sm:space-x-2 text-sm text-gray-600 mb-4">
+              <button
+                onClick={() => router.push('/admin/dashboard')}
+                className="hover:text-gray-900 flex items-center p-1 rounded hover:bg-gray-100"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Job List
+              </button>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-900 font-medium truncate">Manage Candidates</span>
+            </nav>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{job.job_title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate max-w-lg">{job.job_title}</h1>
               <p className="text-gray-600 mt-1">
                 Status: <span className={`font-medium ${job.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-                  {job.status}
+                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)} {/* Capitalize */}
                 </span>
               </p>
             </div>
 
             {/* Job CRUD Buttons */}
-            <div className="flex space-x-3">
+             <div className="flex flex-wrap gap-2"> {/* Gunakan flex-wrap */}
               <Button
                 variant="outline"
+                size="sm" // Ukuran tombol lebih kecil
                 onClick={() => setShowEditModal(true)}
                 className="flex items-center"
               >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit Job
+                <Edit3 className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Edit Job</span> {/* Sembunyikan teks di mobile */}
+                 <span className="sm:hidden">Edit</span>
               </Button>
 
               <Button
                 variant={job.status === 'active' ? 'secondary' : 'primary'}
+                 size="sm"
                 onClick={handleToggleJobStatus}
                 className="flex items-center"
               >
                 {job.status === 'active' ? (
                   <>
-                    <PowerOff className="h-4 w-4 mr-2" />
-                    Deactivate
+                    <PowerOff className="h-4 w-4 mr-1 sm:mr-2" />
+                     <span className="hidden sm:inline">Deactivate</span>
+                      <span className="sm:hidden">Off</span>
                   </>
                 ) : (
                   <>
-                    <Power className="h-4 w-4 mr-2" />
-                    Activate
+                    <Power className="h-4 w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Activate</span>
+                     <span className="sm:hidden">On</span>
                   </>
                 )}
               </Button>
 
               <Button
                 variant="outline"
+                 size="sm"
                 onClick={handleDeleteJob}
-                className="flex items-center text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+                className="flex items-center text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 hover:bg-red-50"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Job
+                <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                 <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span>
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Candidates Table */}
-        <Card className="p-6 bg-white border-gray-200 shadow-lg">
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-sky-600 bg-clip-text text-transparent">
-                  Candidates
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {applications.length} {applications.length === 1 ? 'application' : 'applications'} received
-                </p>
-              </div>
+        {/* Candidates Table Card */}
+        {/* Ganti Card sebelumnya dengan div biasa atau Card dengan p-0 */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+           {/* Header Card (Search & Title) */}
+           <div className="p-4 sm:p-6 border-b border-gray-200">
+               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                 <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    Candidates
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                    {applications.length} {applications.length === 1 ? 'application' : 'applications'} received
+                    </p>
+                </div>
+                {/* Global Search */}
+                <div className="relative w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                    placeholder="Search candidates..."
+                    value={globalFilter ?? ''}
+                    onChange={(e) => setGlobalFilter(String(e.target.value))}
+                    className="pl-9 w-full sm:w-64 h-9 text-sm rounded-md border-gray-300 focus:border-teal-500 focus:ring-teal-500" // Sesuaikan styling input
+                    />
+                </div>
+               </div>
+           </div>
 
-              {/* Global Search */}
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 transition-colors group-hover:text-teal-500" />
-                <Input
-                  placeholder="Search candidates..."
-                  value={globalFilter ?? ''}
-                  onChange={(e) => setGlobalFilter(String(e.target.value))}
-                  className="pl-10 w-72 bg-white border-gray-300 focus:bg-white transition-all"
+          {applications.length === 0 && !loading ? (
+             <div className="p-6">
+                <EmptyState
+                    title="No Candidates Yet"
+                    description="No candidates have applied for this job yet."
                 />
-              </div>
-            </div>
-
-            {applications.length === 0 ? (
-              <EmptyState
-                title="No Candidates Yet"
-                description="No candidates have applied for this job yet."
-              />
-            ) : (
-              <>
-                {/* Modern Glassmorphism Table */}
-                <div className="overflow-x-auto rounded-2xl border border-gray-200/50 bg-white/50 backdrop-blur-sm">
-                  <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                    <thead>
-                      {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id} className="border-b border-gray-200/50 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80">
-                          <SortableContext
-                            items={columnOrder.length > 0 ? columnOrder : headerGroup.headers.map(h => h.column.id)}
-                            strategy={horizontalListSortingStrategy}
-                          >
-                            {headerGroup.headers.map(header => {
-                              const isSelect = header.column.id === 'select'
-                              const isFullName = header.column.id === 'full_name'
-                              const isActions = header.column.id === 'actions'
-
-                              return (
-                              <th
-                                key={header.id}
-                                className={`px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider first:rounded-tl-2xl last:rounded-tr-2xl relative ${
-                                  isSelect ? 'sticky left-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50' : ''
-                                } ${
-                                  isFullName ? 'sticky left-[60px] z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-r border-gray-200/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
-                                } ${
-                                  isActions ? 'sticky right-0 z-20 bg-gradient-to-r from-teal-50/80 via-sky-50/80 to-teal-50/80 border-l border-gray-200/50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
-                                }`}
-                                style={{ width: header.getSize() }}
-                              >
-                                <DraggableHeader header={header} table={table} />
-                              </th>
-                              )
-                            })}
-                          </SortableContext>
-                        </tr>
-                      ))}
-                    </thead>
-                    <tbody className="divide-y divide-gray-100/50">
-                      {table.getRowModel().rows.map((row, index) => (
-                        <tr
-                          key={row.id}
-                          className="group relative transition-all duration-200 hover:bg-teal-50/30"
-                          style={{
-                            animationDelay: `${index * 50}ms`
-                          }}
+             </div>
+          ) : (
+            <>
+              {/* Modern Solid Table */}
+              <div className="overflow-x-auto"> {/* Wrapper untuk horizontal scroll */}
+                <table className="min-w-full divide-y divide-gray-200" style={{ width: tableTotalSize }}>
+                  <thead className="bg-gray-50">
+                    {table.getHeaderGroups().map(headerGroup => (
+                      <tr key={headerGroup.id}>
+                        <SortableContext
+                           items={columnOrder.length > 0 ? columnOrder : headerGroup.headers.map(h => h.column.id)}
+                          strategy={horizontalListSortingStrategy}
                         >
-                          {row.getVisibleCells().map((cell, cellIndex) => {
-                            const isSelect = cell.column.id === 'select'
-                            const isFullName = cell.column.id === 'full_name'
-                            const isActions = cell.column.id === 'actions'
+                          {headerGroup.headers.map(header => {
+                            const isSelect = header.column.id === 'select';
+                            const isFullName = header.column.id === 'full_name';
+                            const isActions = header.column.id === 'actions';
 
                             return (
+                              <th
+                                key={header.id}
+                                scope="col"
+                                className={cn(
+                                  "px-4 py-3 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider relative group", // Kurangi padding mobile
+                                  header.column.getCanResize() && "cursor-col-resize select-none",
+                                   // --- STICKY STYLING ---
+                                  isSelect && "sticky left-0 z-20 bg-gray-50 border-r border-gray-200",
+                                  // Offset 'left' harus sesuai lebar kolom 'select' (size: 60)
+                                  isFullName && "sticky left-[60px] z-20 bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
+                                   // Offset 'left' = lebar 'select' + padding
+                                   isActions && "sticky right-0 z-20 bg-gray-50 border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center" // Center align header
+                                )}
+                                style={{
+                                    width: header.getSize(),
+                                }}
+                              >
+                                  <div className="flex items-center">
+                                      {/* Draggable Header Content (termasuk drag handle) */}
+                                      <DraggableHeader header={header} table={table} />
+                                  </div>
+                                  {/* Resizer */}
+                                   {header.column.getCanResize() && (
+                                    <div
+                                        onMouseDown={header.getResizeHandler()}
+                                        onTouchStart={header.getResizeHandler()}
+                                        className={cn(
+                                        'absolute top-0 right-0 h-full w-[5px] cursor-col-resize select-none touch-none bg-gray-300 opacity-0 group-hover:opacity-100',
+                                        header.column.getIsResizing() && 'bg-teal-400 opacity-100'
+                                        )}
+                                    />
+                                    )}
+                              </th>
+                            );
+                          })}
+                        </SortableContext>
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {table.getRowModel().rows.map((row, index) => (
+                      <tr
+                        key={row.id}
+                        className="hover:bg-gray-50 transition-colors duration-150 group" // group untuk hover di sticky
+                      >
+                        {row.getVisibleCells().map(cell => {
+                           const isSelect = cell.column.id === 'select';
+                           const isFullName = cell.column.id === 'full_name';
+                           const isActions = cell.column.id === 'actions';
+                          return (
                             <td
                               key={cell.id}
-                              className={`px-6 py-5 text-sm text-gray-900 transition-colors duration-200 ${
-                                cellIndex === 0 ? 'rounded-l-xl' : ''
-                              } ${
-                                cellIndex === row.getVisibleCells().length - 1 ? 'rounded-r-xl' : ''
-                              } ${
-                                isSelect ? 'sticky left-0 z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50' : ''
-                              } ${
-                                isFullName ? 'sticky left-[60px] z-10 bg-white group-hover:bg-teal-50/30 border-r border-gray-200/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
-                              } ${
-                                isActions ? 'sticky right-0 z-10 bg-white group-hover:bg-teal-50/30 border-l border-gray-200/50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.1)]' : ''
-                              }`}
-                              style={{ width: cell.column.getSize() }}
-                            >
-                              {/* Magic Bento Grid Animation - Only on first cell */}
-                              {cellIndex === 0 && (
-                                <div className="absolute inset-0 left-0 right-[calc(-100vw)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden rounded-xl -z-0">
-                                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-sky-500/5 to-purple-500/5 animate-gradient-shift"></div>
-                                  <div className="bento-grid absolute inset-0">
-                                    {[...Array(20)].map((_, i) => (
-                                      <div
-                                        key={i}
-                                        className="bento-cell"
-                                        style={{
-                                          animationDelay: `${i * 30}ms`
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
+                              className={cn(
+                                "px-4 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-800", // Kurangi padding mobile
+                                 // --- STICKY STYLING ---
+                                isSelect && "sticky left-0 z-10 bg-white group-hover:bg-gray-50 border-r border-gray-200",
+                                // Offset 'left' harus sesuai lebar kolom 'select'
+                                isFullName && "sticky left-[60px] z-10 bg-white group-hover:bg-gray-50 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
+                                 // Offset 'left' = lebar 'select' + padding
+                                 isActions && "sticky right-0 z-10 bg-white group-hover:bg-gray-50 border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]"
                               )}
-                              <div className="relative z-10">
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </div>
+                                style={{ width: cell.column.getSize() }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200/50">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium text-gray-700">
-                      Page <span className="text-teal-600 font-bold">{table.getState().pagination.pageIndex + 1}</span> of <span className="font-bold">{table.getPageCount()}</span>
-                    </span>
-                    <select
-                      value={table.getState().pagination.pageSize}
-                      onChange={e => table.setPageSize(Number(e.target.value))}
-                      className="border border-gray-300/50 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
-                    >
-                      {[5, 10, 20, 50].map(pageSize => (
-                        <option key={pageSize} value={pageSize}>
-                          Show {pageSize}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {/* Pagination */}
+               <div className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-6 border-t border-gray-200">
+                    {/* Items per page and page info */}
+                    <div className="flex items-center space-x-3 mb-4 sm:mb-0">
+                        <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        Page <span className="font-bold">{table.getState().pagination.pageIndex + 1}</span> of <span className="font-bold">{table.getPageCount()}</span>
+                        </span>
+                        <select
+                        value={table.getState().pagination.pageSize}
+                        onChange={e => table.setPageSize(Number(e.target.value))}
+                        className="border border-gray-300 rounded-md px-2 py-1 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-transparent transition-all"
+                        >
+                        {[5, 10, 20, 50].map(pageSize => (
+                            <option key={pageSize} value={pageSize}>
+                            Show {pageSize}
+                            </option>
+                        ))}
+                        </select>
+                         <span className="text-sm text-gray-500 whitespace-nowrap">
+                            ({candidateData.length} total candidates)
+                         </span>
+                    </div>
 
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
-                      className="font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-500 transition-all disabled:opacity-40"
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
-                      className="font-medium hover:bg-teal-50 hover:text-teal-700 hover:border-teal-500 transition-all disabled:opacity-40"
-                    >
-                      Next
-                    </Button>
-                  </div>
+                    {/* Pagination buttons */}
+                    <div className="flex space-x-2">
+                        <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                        className="font-medium disabled:opacity-50"
+                        >
+                        Previous
+                        </Button>
+                        <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                        className="font-medium disabled:opacity-50"
+                        >
+                        Next
+                        </Button>
+                    </div>
                 </div>
-              </>
-            )}
-          </div>
-        </Card>
+            </>
+          )}
+        </div>
 
         {/* Edit Job Modal */}
         <EditJobModal
@@ -934,5 +1008,5 @@ export default function ManageCandidatesPage() {
         />
       </div>
     </DndContext>
-  )
+  );
 }
