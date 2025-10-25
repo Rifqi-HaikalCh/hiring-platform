@@ -78,29 +78,29 @@ export default function CandidateDashboard() {
     loadData()
   }, [user])
 
-  const loadJobs = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await getJobs()
+const loadJobs = async () => {
+  try {
+    setLoading(true);
+    const { data, error } = await getJobs();
 
-      if (error) {
-        toast.error('Failed to load jobs')
-        console.error('Load jobs error:', error)
-        return
-      }
+    if (error) {
+      toast.error('Failed to load jobs');
+      console.error('Load jobs error:', error);
+      return;
+    }
+
+    console.log('[Dashboard] Raw jobs data received:', data);
 
       // Filter jobs: show active jobs OR jobs that user has applied to (even if inactive)
-      let visibleJobs = (data || []).filter(job => {
-        // Always show active jobs
-        if (job.status === 'active') return true
+let visibleJobs = (data || []).filter(job => {
+        console.log(`[Dashboard] Filtering job ${job.id}: status=${job.status}, applied=${appliedJobIds.includes(job.id)}`); // Log proses filter
+        if (job.status === 'active') return true;
+        if (user && appliedJobIds.includes(job.id)) return true;
+        return false;
+    });
+    console.log('[Dashboard] Visible jobs after filtering:', visibleJobs); // Log data setelah filter
 
-        // Also show inactive jobs if user has applied to them
-        if (user && appliedJobIds.includes(job.id)) return true
-
-        return false
-      })
-
-      setJobs(visibleJobs)
+    setJobs(visibleJobs);
 
       // Select first job if available
       if (visibleJobs.length > 0 && !selectedJobId) {

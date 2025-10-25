@@ -233,51 +233,58 @@ export async function getAcceptedApplicationsCount(jobId: string) {
   }
 }
 
-// Check and auto-deactivate job if candidates needed is met
 export async function checkAndDeactivateJobIfFull(jobId: string) {
   try {
-    // Get job details directly from database to avoid circular dependency
+    console.log(`[checkAndDeactivateJobIfFull] Starting check for job: ${jobId}`); // Log awal
+
+    // Get job details
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('*')
+      .select('*') // Pastikan 'candidates_needed' dan 'status' ada di select
       .eq('id', jobId)
-      .single()
+      .single();
 
     if (jobError || !job) {
-      console.error('Failed to get job:', jobError)
-      return { success: false, error: jobError }
+      console.error(`[checkAndDeactivateJobIfFull] Failed to get job ${jobId}:`, jobError);
+      return { success: false, error: jobError };
     }
+    console.log(`[checkAndDeactivateJobIfFull] Job details fetched:`, job); // Log detail job
 
     // Get accepted count
-    const { data: acceptedCount, error: countError } = await getAcceptedApplicationsCount(jobId)
+    const { data: acceptedCount, error: countError } = await getAcceptedApplicationsCount(jobId);
     if (countError) {
-      console.error('Failed to get accepted count:', countError)
-      return { success: false, error: countError }
+      console.error(`[checkAndDeactivateJobIfFull] Failed to get accepted count for job ${jobId}:`, countError);
+      return { success: false, error: countError };
     }
+    console.log(`[checkAndDeactivateJobIfFull] Accepted count for job ${jobId}: ${acceptedCount}`); // Log accepted count
 
-    console.log(`Checking job ${jobId}: ${acceptedCount}/${job.candidates_needed} accepted, status: ${job.status}`)
+    console.log(`[checkAndDeactivateJobIfFull] Checking condition: ${acceptedCount} >= ${job.candidates_needed} && ${job.status} === 'active'`); // Log kondisi
 
     // Check if job should be deactivated
     if (acceptedCount >= job.candidates_needed && job.status === 'active') {
+      console.log(`[checkAndDeactivateJobIfFull] Condition met. Attempting to deactivate job ${jobId}...`); // Log sebelum update
+
       // Update job status directly
       const { error: updateError } = await supabase
         .from('jobs')
         .update({ status: 'inactive' })
-        .eq('id', jobId)
+        .eq('id', jobId);
 
       if (updateError) {
-        console.error('Failed to deactivate job:', updateError)
-        return { success: false, error: updateError }
+        console.error(`[checkAndDeactivateJobIfFull] Failed to deactivate job ${jobId}:`, updateError); // Log error update
+        return { success: false, error: updateError };
       }
 
-      console.log(`Job ${jobId} auto-deactivated: ${acceptedCount}/${job.candidates_needed} candidates accepted`)
-      return { success: true, deactivated: true, message: 'Job auto-deactivated as candidates needed quota is met' }
+      console.log(`[checkAndDeactivateJobIfFull] Job ${jobId} successfully auto-deactivated.`); // Log sukses
+      return { success: true, deactivated: true, message: 'Job auto-deactivated as candidates needed quota is met' };
+    } else {
+        console.log(`[checkAndDeactivateJobIfFull] Condition not met for job ${jobId}. Status remains ${job.status}.`); // Log jika kondisi tidak terpenuhi
     }
 
-    return { success: true, deactivated: false }
+    return { success: true, deactivated: false };
   } catch (error) {
-    console.error('Check and deactivate job error:', error)
-    return { success: false, error }
+    console.error(`[checkAndDeactivateJobIfFull] Unexpected error for job ${jobId}:`, error); // Log error tak terduga
+    return { success: false, error };
   }
 }
 
