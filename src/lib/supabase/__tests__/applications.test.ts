@@ -2,33 +2,23 @@
 import {
   extractCandidateData,
   checkAndDeactivateJobIfFull,
-  // getAcceptedApplicationsCount // Import jika perlu diuji terpisah
-} from '@/lib/supabase/applications'; // <-- Ubah path import
-import * as jobsApi from '@/lib/supabase/jobs'; // <-- Ubah path import
-import { supabase } from '@/lib/supabase/client'; // <-- Ubah path import
+} from '@/lib/supabase/applications';
+import { supabase } from '@/lib/supabase/client';
 
 // Mock Supabase client
-jest.mock('@/lib/supabase/client', () => ({ // <-- Ubah path mock
+jest.mock('@/lib/supabase/client', () => ({
   supabase: {
-    from: jest.fn(),
+    from: jest.fn(), // 'from' adalah mock function yang akan kita kontrol
   },
 }));
-
-// Mock jobsApi
-jest.mock('@/lib/supabase/jobs', () => ({ // <-- Ubah path mock
-    getJobById: jest.fn(),
-    updateJobStatus: jest.fn(),
-}));
-const mockUpdateJobStatus = jobsApi.updateJobStatus as jest.Mock;
-const mockGetJobById = jobsApi.getJobById as jest.Mock;
 
 // Mock console.error
 jest.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('Supabase Applications Utilities', () => {
-
   // --- Tests for extractCandidateData ---
   describe('extractCandidateData', () => {
+    // (Tidak ada perubahan di sini, semua tes 'extractCandidateData' Anda sudah benar)
     test('should extract data with standard keys', () => {
       const data = {
         full_name: 'John Doe',
@@ -62,7 +52,7 @@ describe('Supabase Applications Utilities', () => {
         linkedin_url: 'https://linkedin.com/in/janedoe',
       };
       const result = extractCandidateData(data);
-       expect(result).toEqual({
+      expect(result).toEqual({
         full_name: 'Jane Doe',
         email: 'jane@example.com',
         phone: '67890',
@@ -74,15 +64,19 @@ describe('Supabase Applications Utilities', () => {
     });
 
     test('should prioritize specific keys (e.g., phone_number over phone)', () => {
-       const data = { phone_number: 'priority123', phone: 'secondary456' };
-       const result = extractCandidateData(data);
-       expect(result.phone).toBe('priority123');
+      const data = { phone_number: 'priority123', phone: 'secondary456' };
+      const result = extractCandidateData(data);
+      expect(result.phone).toBe('priority123');
     });
 
-     test('should prioritize specific keys (e.g., linkedin_link over others)', () => {
-       const data = { linkedin_link: 'priorityLink', linkedin_url: 'secondaryUrl', linkedin: 'tertiary' };
-       const result = extractCandidateData(data);
-       expect(result.linkedin_url).toBe('priorityLink');
+    test('should prioritize specific keys (e.g., linkedin_link over others)', () => {
+      const data = {
+        linkedin_link: 'priorityLink',
+        linkedin_url: 'secondaryUrl',
+        linkedin: 'tertiary',
+      };
+      const result = extractCandidateData(data);
+      expect(result.linkedin_url).toBe('priorityLink');
     });
 
     test('should return empty strings for missing fields', () => {
@@ -102,136 +96,193 @@ describe('Supabase Applications Utilities', () => {
     test('should handle null or undefined input', () => {
       expect(extractCandidateData(null)).toEqual({});
       expect(extractCandidateData(undefined)).toEqual({});
-      expect(extractCandidateData("not an object")).toEqual({});
+      expect(extractCandidateData('not an object')).toEqual({});
     });
   });
 
   // --- Tests for checkAndDeactivateJobIfFull ---
   describe('checkAndDeactivateJobIfFull', () => {
-      const jobId = 'full-job-id';
-      let mockSelect: jest.Mock;
-      let mockUpdate: jest.Mock; // Definisikan mockUpdate di scope ini
+    const jobId = 'full-job-id';
 
-      beforeEach(() => {
-          // Reset mocks for supabase.from calls
-          mockSelect = jest.fn();
-          mockUpdate = jest.fn(() => ({ // Definisikan mockUpdate di sini
-              eq: jest.fn().mockResolvedValue({ error: null }) // Assume update success
-          }));
+    // Definisikan mock untuk *akhir* dari Supabase chain
+    let mockJobSingle: jest.Mock;
+    let mockJobUpdate: jest.Mock;
+    let mockJobUpdateEq: jest.Mock;
+    let mockAppCountFinalEq: jest.Mock; // Mock untuk .eq('status', 'accepted')
 
-          (supabase.from as jest.Mock).mockImplementation((tableName: string) => {
-              if (tableName === 'jobs') {
-                  return {
-                      select: jest.fn().mockReturnThis(),
-                      eq: jest.fn().mockReturnThis(),
-                      single: mockGetJobById, // Gunakan mock function ini untuk fetch job
-                      update: mockUpdate, // Gunakan mock function ini untuk update
-                  };
-              }
-              if (tableName === 'applications') {
-                  return {
-                      select: mockSelect.mockReturnThis(), // Return mockSelect untuk count
-                      eq: jest.fn().mockReturnThis(),
-                  };
-              }
-              return {};
-          });
-          // mockUpdateJobStatus.mockClear(); // Kita mock supabase.from('jobs').update langsung
-          mockGetJobById.mockClear();
-          mockSelect.mockClear(); // Reset mockSelect juga
+    beforeEach(() => {
+      // 1. Buat mock baru untuk setiap test
+      mockJobSingle = jest.fn();
+      mockJobUpdateEq = jest.fn().mockResolvedValue({ error: null }); // Default update sukses
+      mockJobUpdate = jest.fn().mockReturnValue({ eq: mockJobUpdateEq }); // .update().eq()
+      mockAppCountFinalEq = jest.fn(); // Ini akan di-await, jadi kita set di tiap test
+
+      // 2. Bersihkan implementasi (supabase.from) sebelumnya
+      (supabase.from as jest.Mock).mockClear();
+
+      // 3. Set implementasi baru untuk (supabase.from)
+      (supabase.from as jest.Mock).mockImplementation((tableName: string) => {
+        if (tableName === 'jobs') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: mockJobSingle, // ...select().eq().single()
+              }),
+            }),
+            update: mockJobUpdate, // ...update()
+          };
+        }
+        if (tableName === 'applications') {
+          // Ini untuk getAcceptedApplicationsCount: .select(...).eq(...).eq(...)
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                eq: mockAppCountFinalEq, // Akhir dari chain
+              }),
+            }),
+          };
+        }
+        // Default return untuk tabel lain (jika ada)
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+          update: jest.fn().mockReturnThis(),
+        };
+      });
+    });
+
+    test('should deactivate job if accepted count >= needed and status is active', async () => {
+      // 1. Setup: Job butuh 1, status 'active'
+      mockJobSingle.mockResolvedValue({
+        data: { id: jobId, candidates_needed: 1, status: 'active' },
+        error: null,
+      });
+      // 2. Setup: Count 'accepted' adalah 1
+      mockAppCountFinalEq.mockResolvedValue({
+        data: null,
+        count: 1,
+        error: null,
       });
 
-      test('should deactivate job if accepted count >= needed and status is active', async () => {
-          mockGetJobById.mockResolvedValue({ data: { id: jobId, candidates_needed: 1, status: 'active' }, error: null });
-          mockSelect.mockReturnValue({ // Mock hasil query count
-             select: jest.fn().mockReturnThis(), // Chaining select
-             eq: jest.fn().mockReturnThis(), // Chaining eq
-             then: jest.fn(callback => callback({ data: null, count: 1, error: null })) // Return count
-          });
+      // 3. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
 
-          const result = await checkAndDeactivateJobIfFull(jobId);
+      // 4. Assert
+      expect(result.success).toBe(true);
+      expect(result.deactivated).toBe(true);
+      expect(mockJobUpdate).toHaveBeenCalledWith({ status: 'inactive' });
+      expect(mockJobUpdateEq).toHaveBeenCalledWith('id', jobId); // Pastikan update job yang benar
+    });
 
-          expect(result.success).toBe(true);
-          expect(result.deactivated).toBe(true);
-          // Cek apakah supabase.from('jobs').update dipanggil
-          expect(mockUpdate).toHaveBeenCalledWith({ status: 'inactive' });
+    test('should NOT deactivate job if accepted count < needed', async () => {
+      // 1. Setup: Job butuh 2, status 'active'
+      mockJobSingle.mockResolvedValue({
+        data: { id: jobId, candidates_needed: 2, status: 'active' },
+        error: null,
+      });
+      // 2. Setup: Count 'accepted' adalah 1
+      mockAppCountFinalEq.mockResolvedValue({
+        data: null,
+        count: 1,
+        error: null,
       });
 
-      test('should NOT deactivate job if accepted count < needed', async () => {
-          mockGetJobById.mockResolvedValue({ data: { id: jobId, candidates_needed: 2, status: 'active' }, error: null });
-           mockSelect.mockReturnValue({
-             select: jest.fn().mockReturnThis(),
-             eq: jest.fn().mockReturnThis(),
-             then: jest.fn(callback => callback({ data: null, count: 1, error: null }))
-           });
+      // 3. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
 
+      // 4. Assert
+      expect(result.success).toBe(true);
+      expect(result.deactivated).toBe(false);
+      expect(mockJobUpdate).not.toHaveBeenCalled();
+    });
 
-          const result = await checkAndDeactivateJobIfFull(jobId);
-
-          expect(result.success).toBe(true);
-          expect(result.deactivated).toBe(false);
-          expect(mockUpdate).not.toHaveBeenCalled(); // Pastikan update tidak dipanggil
+    test('should NOT deactivate job if status is already inactive', async () => {
+      // 1. Setup: Job butuh 1, status 'inactive'
+      mockJobSingle.mockResolvedValue({
+        data: { id: jobId, candidates_needed: 1, status: 'inactive' },
+        error: null,
+      });
+      // 2. Setup: Count 'accepted' adalah 1
+      mockAppCountFinalEq.mockResolvedValue({
+        data: null,
+        count: 1,
+        error: null,
       });
 
-       test('should NOT deactivate job if status is already inactive', async () => {
-          mockGetJobById.mockResolvedValue({ data: { id: jobId, candidates_needed: 1, status: 'inactive' }, error: null });
-            mockSelect.mockReturnValue({
-             select: jest.fn().mockReturnThis(),
-             eq: jest.fn().mockReturnThis(),
-             then: jest.fn(callback => callback({ data: null, count: 1, error: null }))
-            });
+      // 3. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
 
-          const result = await checkAndDeactivateJobIfFull(jobId);
+      // 4. Assert
+      expect(result.success).toBe(true);
+      expect(result.deactivated).toBe(false);
+      expect(mockJobUpdate).not.toHaveBeenCalled();
+    });
 
-          expect(result.success).toBe(true);
-          expect(result.deactivated).toBe(false);
-           expect(mockUpdate).not.toHaveBeenCalled();
+    test('should return error if fetching job fails', async () => {
+      // 1. Setup: Gagal fetch job
+      mockJobSingle.mockResolvedValue({
+        data: null,
+        error: new Error('Failed to fetch job'),
       });
+      // (Count tidak perlu di-setup karena fungsi akan return error duluan)
 
-      test('should return error if fetching job fails', async () => {
-          mockGetJobById.mockResolvedValue({ data: null, error: new Error('Failed to fetch job') });
-          const result = await checkAndDeactivateJobIfFull(jobId);
-          expect(result.success).toBe(false);
-          expect(result.error).toBeInstanceOf(Error);
-          expect(mockUpdate).not.toHaveBeenCalled();
+      // 3. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
+
+      // 4. Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).message).toBe('Failed to fetch job');
+      expect(mockJobUpdate).not.toHaveBeenCalled();
+    });
+
+    test('should return error if fetching count fails', async () => {
+      // 1. Setup: Job sukses fetch
+      mockJobSingle.mockResolvedValue({
+        data: { id: jobId, candidates_needed: 1, status: 'active' },
+        error: null,
       });
+      // 2. Setup: Gagal fetch count (promise di akhir chain di-reject)
+      mockAppCountFinalEq.mockRejectedValue(new Error('Count failed'));
 
-       test('should return error if fetching count fails', async () => {
-          mockGetJobById.mockResolvedValue({ data: { id: jobId, candidates_needed: 1, status: 'active' }, error: null });
-           mockSelect.mockReturnValue({
-               select: jest.fn().mockReturnThis(),
-               eq: jest.fn().mockReturnThis(),
-               then: jest.fn(callback => callback({ data: null, count: null, error: new Error('Count failed') })) // Mock error saat count
-           });
-          const result = await checkAndDeactivateJobIfFull(jobId);
-          expect(result.success).toBe(false);
-          expect(result.error).toBeInstanceOf(Error);
-          expect((result.error as Error).message).toBe('Count failed');
-          expect(mockUpdate).not.toHaveBeenCalled();
+      // 3. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
+
+      // 4. Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).message).toBe('Count failed');
+      expect(mockJobUpdate).not.toHaveBeenCalled();
+    });
+
+    test('should return error if updating job status fails', async () => {
+      // 1. Setup: Job sukses fetch
+      mockJobSingle.mockResolvedValue({
+        data: { id: jobId, candidates_needed: 1, status: 'active' },
+        error: null,
       });
-
-      test('should return error if updating job status fails', async () => {
-          mockGetJobById.mockResolvedValue({ data: { id: jobId, candidates_needed: 1, status: 'active' }, error: null });
-          mockSelect.mockReturnValue({
-             select: jest.fn().mockReturnThis(),
-             eq: jest.fn().mockReturnThis(),
-             then: jest.fn(callback => callback({ data: null, count: 1, error: null }))
-           });
-          // Mock gagal update
-          mockUpdate.mockImplementation(() => ({
-             eq: jest.fn().mockResolvedValue({ error: new Error('Update failed') }) // Mock error saat update
-          }));
-
-          const result = await checkAndDeactivateJobIfFull(jobId);
-
-          expect(result.success).toBe(false);
-          expect(result.error).toBeInstanceOf(Error);
-          expect((result.error as Error).message).toBe('Update failed');
+      // 2. Setup: Count 'accepted' adalah 1
+      mockAppCountFinalEq.mockResolvedValue({
+        data: null,
+        count: 1,
+        error: null,
       });
+      // 3. Setup: Gagal update status
+      mockJobUpdateEq.mockResolvedValue({ error: new Error('Update failed') });
+
+      // 4. Run
+      const result = await checkAndDeactivateJobIfFull(jobId);
+
+      // 5. Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBeInstanceOf(Error);
+      expect((result.error as Error).message).toBe('Update failed');
+    });
   });
 });
 
-// Kembalikan mock console.error ke implementasi asli setelah semua test selesai
+// Kembalikan mock console.error ke implementasi asli
 afterAll(() => {
   (console.error as jest.Mock).mockRestore();
 });
