@@ -14,7 +14,7 @@ interface Job {
     min: number
     max: number
   }
-  companyLogo?: string
+  companyLogo?: string | null;
   jobType?: string
 }
 
