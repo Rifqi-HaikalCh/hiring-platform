@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { Dialog, Transition } from '@headlessui/react'
-import { X, Camera, Upload, User, Mail, Phone, Calendar, MapPin, Briefcase, ArrowLeft, Info } from 'lucide-react'
+import { X, Camera, Upload, User, Mail, Phone, Calendar, MapPin, Briefcase, ArrowLeft, Info, FileText } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Select from 'react-select'
 import DatePicker from 'react-datepicker'
@@ -274,7 +274,7 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
       }
 
       // Submit application
-      const { error } = await supabase
+      const { data: insertedApplication, error } = await supabase
         .from('applications')
         .insert([applicationData])
         .select()
@@ -284,6 +284,18 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
         console.error('Application submission error:', error)
         toast.error('Failed to submit application')
         return
+      }
+
+      const { notifyApplicationStatusChange } = await import('@/lib/supabase/notifications');
+      if (insertedApplication) {
+        await notifyApplicationStatusChange(
+          user.id,
+          insertedApplication.id,
+          job.id,
+          job.job_title,
+          job.company_name || 'a company',
+          'submitted'
+        );
       }
 
       toast.success('Application submitted successfully!')
@@ -320,7 +332,7 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="fixed inset-0 bg-gradient-to-br from-gray-900/80 via-slate-900/80 to-gray-900/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -334,34 +346,31 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
-                  {/* Header */}
-                  <div className="border-b border-gray-200 bg-white px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={handleClose}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <ArrowLeft className="h-5 w-5 text-gray-600" />
-                        </button>
-                        <div>
-                          <Dialog.Title className="text-lg font-semibold text-gray-900">
-                            Apply {job.job_title} at {job.company || 'Company'}
-                          </Dialog.Title>
-                        </div>
+                <Dialog.Panel className="w-full max-w-3xl max-h-[90vh] transform overflow-hidden rounded-2xl bg-white/70 backdrop-blur-xl text-left align-middle shadow-xl transition-all border border-white/20 flex flex-col">
+                  <div className="relative flex items-center justify-between p-4 sm:p-6 bg-gradient-to-r from-teal-600 via-teal-500 to-cyan-600 text-white flex-shrink-0 overflow-hidden">
+                    <div className="relative flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <FileText className="h-6 w-6" />
                       </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Info className="h-4 w-4" />
-                        <span>This field required to fill</span>
+                      <div>
+                        <Dialog.Title className="text-xl font-bold">
+                          Apply for {job.job_title}
+                        </Dialog.Title>
+                        <p className="text-teal-100 text-sm">Fill in the details below</p>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      disabled={submitting}
+                      className="relative p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-90"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
                   </div>
 
-                  {/* Form Content */}
-                  <div className="px-6 py-6 max-h-[calc(100vh-16rem)] overflow-y-auto custom-scrollbar bg-white">
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                      {/* Photo Profile */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 bg-white">
+                    <form id="apply-job-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                       {isFieldVisible('photo_profile') && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -419,7 +428,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Full Name */}
                       {isFieldVisible('full_name') && (
                         <div>
                           <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -439,7 +447,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Date of Birth */}
                       {isFieldVisible('date_of_birth') && (
                         <div>
                           <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-2">
@@ -472,7 +479,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Gender - Radio Buttons */}
                       {isFieldVisible('gender') && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -508,7 +514,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Domicile */}
                       {isFieldVisible('domicile') && (
                         <div>
                           <label htmlFor="domicile" className="block text-sm font-medium text-gray-700 mb-2">
@@ -539,7 +544,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Phone Number */}
                       {isFieldVisible('phone_number') && (
                         <div>
                           <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 mb-2">
@@ -582,7 +586,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* Email */}
                       {isFieldVisible('email') && (
                         <div>
                           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -607,7 +610,6 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                         </div>
                       )}
 
-                      {/* LinkedIn Link */}
                       {isFieldVisible('linkedin_link') && (
                         <div>
                           <label htmlFor="linkedin_link" className="block text-sm font-medium text-gray-700 mb-2">
@@ -631,18 +633,36 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
                           )}
                         </div>
                       )}
-
-                      {/* Submit Button */}
-                      <div className="pt-4">
-                        <Button
-                          type="submit"
-                          disabled={submitting}
-                          className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3"
-                        >
-                          {submitting ? 'Submitting...' : 'Submit'}
-                        </Button>
-                      </div>
                     </form>
+                  </div>
+
+                  <div className="border-t border-gray-200 p-4 sm:p-6 flex-shrink-0 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={submitting}
+                        className="hover:scale-105 transition-all duration-300"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        form="apply-job-form"
+                        disabled={submitting}
+                        className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/40 hover:scale-105 transition-all duration-300"
+                      >
+                        {submitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Submitting...
+                          </>
+                        ) : (
+                          'Submit Application'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </Dialog.Panel>
               </Transition.Child>
@@ -656,6 +676,23 @@ export function ApplyJobModal({ isOpen, onClose, job }: ApplyJobModalProps) {
         onClose={() => setShowGestureModal(false)}
         onCapture={handleGestureCapture}
       />
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #14b8a6, #06b6d4);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #0d9488, #0891b2);
+        }
+      `}</style>
     </>
   )
 }

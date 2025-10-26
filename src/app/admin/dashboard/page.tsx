@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { JobCardAdmin } from '@/components/admin/JobCardAdmin'
-import { CreateJobModal } from '@/components/modals/CreateJobModal'
+import { JobFormModal } from '@/components/modals/JobFormModal'
 import { Footer } from '@/components/layout/Footer'
 import { getJobs, updateJobStatus, deleteJob, type Job } from '@/lib/supabase/jobs'
 import { toast } from 'react-hot-toast'
@@ -266,7 +266,8 @@ export default function AdminDashboard() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive' | 'draft' | 'recent'>('all')
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isJobFormModalOpen, setIsJobFormModalOpen] = useState(false)
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof ReturnType<typeof transformJobForAdmin>; direction: 'ascending' | 'descending' } | null>(null)
 
   useEffect(() => {
@@ -297,9 +298,20 @@ export default function AdminDashboard() {
     router.push(`/admin/jobs/${jobId}/manage`)
   }
 
-  const handleJobEdit = (job: ReturnType<typeof transformJobForAdmin>) => {
-    toast('Edit job functionality coming soon')
-  }
+  const handleOpenJobFormModal = (job: Job | null) => {
+    setEditingJob(job);
+    setIsJobFormModalOpen(true);
+  };
+
+  const handleJobSaved = (savedJob: Job) => {
+    if (editingJob) {
+      setJobs(prevJobs => prevJobs.map(j => j.id === savedJob.id ? savedJob : j));
+    } else {
+      loadJobs();
+    }
+    setIsJobFormModalOpen(false);
+    setEditingJob(null);
+  };
 
   const handleJobToggleStatus = async (jobId: string) => {
     const job = jobs.find(j => j.id === jobId)
@@ -342,14 +354,6 @@ export default function AdminDashboard() {
     } catch (error) {
       toast.error('An error occurred while deleting the job')
     }
-  }
-
-  const handleCreateJob = () => {
-    setIsCreateModalOpen(true)
-  }
-
-  const handleJobCreated = () => {
-    loadJobs()
   }
 
   const transformedJobs = jobs.map(transformJobForAdmin)
@@ -551,7 +555,7 @@ export default function AdminDashboard() {
                     key={job.id}
                     job={job}
                     onManage={handleJobManage}
-                    onEdit={handleJobEdit}
+                    onEdit={() => handleOpenJobFormModal(jobs.find(j => j.id === job.id) || null)}
                     onToggleStatus={handleJobToggleStatus}
                     onDelete={handleJobDelete}
                   />
@@ -568,7 +572,7 @@ export default function AdminDashboard() {
 
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <CreateJobCard onClick={handleCreateJob} />
+          <CreateJobCard onClick={() => handleOpenJobFormModal(null)} />
 
           {/* Additional stats card */}
           <Card className="mt-6 p-6">
@@ -591,11 +595,14 @@ export default function AdminDashboard() {
         </div>
         </div>
 
-        {/* Create Job Modal */}
-        <CreateJobModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onJobCreated={handleJobCreated}
+        <JobFormModal
+          isOpen={isJobFormModalOpen}
+          onClose={() => {
+            setIsJobFormModalOpen(false);
+            setEditingJob(null);
+          }}
+          onJobSave={handleJobSaved}
+          jobToEdit={editingJob}
         />
       </div>
       <Footer />

@@ -55,6 +55,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { JobFormModal } from '@/components/modals/JobFormModal';
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Dialog, Transition, Menu } from '@headlessui/react'
@@ -122,224 +123,7 @@ function DraggableHeader({ header, table }: any) {
   )
 }
 
-// Edit Job Modal Component
-function EditJobModal({
-  isOpen,
-  onClose,
-  job,
-  onJobUpdated
-}: {
-  isOpen: boolean
-  onClose: () => void
-  job: Job | null
-  onJobUpdated: (job: Job) => void
-}) {
-  const [formData, setFormData] = useState({
-    job_title: '',
-    job_type: '',
-    job_description: '',
-    department: '',
-    candidates_needed: 1,
-    min_salary: 0,
-    max_salary: 0,
-  })
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (job) {
-      setFormData({
-        job_title: job.job_title || '',
-        job_type: job.job_type || '',
-        job_description: job.job_description || '',
-        department: job.department || '',
-        candidates_needed: job.candidates_needed || 1,
-        min_salary: job.min_salary || 0,
-        max_salary: job.max_salary || 0,
-      })
-    }
-  }, [job])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!job) return
-
-    setLoading(true)
-    try {
-      const { data, error } = await updateJob(job.id, formData)
-
-      if (error) {
-        toast.error('Failed to update job')
-        return
-      }
-
-      if (data) {
-        onJobUpdated(data)
-        toast.success('Job updated successfully')
-        onClose()
-      }
-    } catch (error) {
-      toast.error('An error occurred while updating the job')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
-
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <div className="flex items-center justify-between mb-6">
-                  <Dialog.Title className="text-lg font-medium leading-6 text-gray-900">
-                    Edit Job
-                  </Dialog.Title>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Title
-                    </label>
-                    <Input
-                      value={formData.job_title}
-                      onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Type
-                    </label>
-                    <select
-                      value={formData.job_type}
-                      onChange={(e) => setFormData({ ...formData, job_type: e.target.value })}
-                      className="flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select job type</option>
-                      <option value="full-time">Full Time</option>
-                      <option value="part-time">Part Time</option>
-                      <option value="contract">Contract</option>
-                      <option value="freelance">Freelance</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Description
-                    </label>
-                    <textarea
-                      value={formData.job_description}
-                      onChange={(e) => setFormData({ ...formData, job_description: e.target.value })}
-                      rows={4}
-                      className="flex w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Department (Optional)
-                    </label>
-                    <Input
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      placeholder="e.g., Engineering, Marketing, Sales"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Candidates Needed
-                      </label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={formData.candidates_needed}
-                        onChange={(e) => setFormData({ ...formData, candidates_needed: parseInt(e.target.value) })}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Min Salary
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={formData.min_salary}
-                        onChange={(e) => setFormData({ ...formData, min_salary: parseInt(e.target.value) })}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Salary
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={formData.max_salary}
-                        onChange={(e) => setFormData({ ...formData, max_salary: parseInt(e.target.value) })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onClose}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? 'Updating...' : 'Update Job'}
-                    </Button>
-                  </div>
-                </form>
-              </Dialog.Panel>
-            </Transition.Child>
-          </div>
-        </div>
-      </Dialog>
-    </Transition>
-  )
-}
 
 export default function ManageCandidatesPage() {
   const params = useParams()
@@ -1048,12 +832,11 @@ return (
           )}
         </div>
 
-        {/* Edit Job Modal */}
-        <EditJobModal
+        <JobFormModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          job={job}
-          onJobUpdated={setJob}
+          jobToEdit={job}
+          onJobSave={setJob}
         />
       </div>
     </DndContext>

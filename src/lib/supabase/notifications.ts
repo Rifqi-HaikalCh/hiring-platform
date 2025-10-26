@@ -10,6 +10,7 @@ export interface Notification {
   related_job_id?: string
   is_read: boolean
   created_at: string
+  related_status?: 'submitted' | 'pending' | 'accepted' | 'rejected';
 }
 
 // Create notification
@@ -22,13 +23,13 @@ export async function createNotification(notification: Omit<Notification, 'id' |
       .single()
 
     if (error) {
-      console.error('Create notification error:', error)
+      console.error('Create notification error:', JSON.stringify(error, null, 2))
       throw error
     }
 
     return { data: data as Notification, error: null }
   } catch (error) {
-    console.error('Create notification error:', error)
+    console.error('Create notification error (catch block):', JSON.stringify(error, null, 2))
     return { data: null, error }
   }
 }
@@ -144,20 +145,25 @@ export async function notifyApplicationStatusChange(
   applicationId: string,
   jobId: string,
   jobTitle: string,
-  newStatus: 'pending' | 'accepted' | 'rejected'
+  companyName: string,
+  newStatus: 'submitted' | 'pending' | 'accepted' | 'rejected'
 ) {
   const statusMessages = {
+    submitted: {
+        title: 'Application Submitted',
+        message: `Your application for "${jobTitle}" at ${companyName} has been successfully submitted.`
+    },
     pending: {
-      title: 'Lamaran Sedang Ditinjau',
-      message: `Lamaran Anda untuk posisi "${jobTitle}" sedang dalam proses peninjauan.`
+      title: 'Application Update: Under Review',
+      message: `Hang tight! Your application for "${jobTitle}" at ${companyName} is currently being reviewed by the team.`
     },
     accepted: {
-      title: 'Selamat! Lamaran Diterima',
-      message: `Lamaran Anda untuk posisi "${jobTitle}" telah diterima. Silakan tunggu informasi lebih lanjut.`
+      title: 'Congratulations! Application Accepted',
+      message: `Great news! Your application for "${jobTitle}" at ${companyName} has been accepted. We\'ll be in touch with the next steps soon.`
     },
     rejected: {
-      title: 'Update Lamaran',
-      message: `Terima kasih atas minat Anda pada posisi "${jobTitle}". Saat ini kami memutuskan untuk tidak melanjutkan proses Anda.`
+      title: 'Application Update',
+      message: `Thank you for your interest in the "${jobTitle}" position at ${companyName}. After careful consideration, we\'ve decided not to move forward at this time. We wish you the best in your job search.`
     }
   }
 
@@ -170,6 +176,7 @@ export async function notifyApplicationStatusChange(
     type: 'status_change',
     related_application_id: applicationId,
     related_job_id: jobId,
-    is_read: false
+    is_read: false,
+    related_status: newStatus
   })
 }

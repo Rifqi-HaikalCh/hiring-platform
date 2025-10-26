@@ -1,4 +1,3 @@
-// src/app/notifications/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -7,10 +6,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, type Notification } from '@/lib/supabase/notifications'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Footer } from '@/components/layout/Footer'
 import { Bell, BellOff, Check, CheckCheck, Trash2, Clock, AlertCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase/client';
 
 export default function NotificationsPage() {
   const { user } = useAuth()
@@ -22,8 +21,38 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (user) {
       loadNotifications()
+
+      const channel = supabase
+        .channel(`notifications_page_for_user_${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const newNotification = payload.new as Notification;
+              setNotifications((prev) => [newNotification, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedNotification = payload.new as Notification;
+              setNotifications((prev) =>
+                prev.map((notif) =>
+                  notif.id === updatedNotification.id ? updatedNotification : notif
+                )
+              );
+            } else if (payload.eventType === 'DELETE') {
+              const deletedNotification = payload.old as Notification;
+              setNotifications((prev) =>
+                prev.filter((notif) => notif.id !== deletedNotification.id)
+              );
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  }, [user])
+  }, [user]);
 
   const loadNotifications = async () => {
     if (!user) return
@@ -55,12 +84,7 @@ export default function NotificationsPage() {
       return
     }
 
-    // Update local state
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === notificationId ? { ...notif, is_read: true } : notif
-      )
-    )
+    // No need to update local state here, real-time subscription will handle it
   }
 
   const handleMarkAllAsRead = async () => {
@@ -73,19 +97,13 @@ export default function NotificationsPage() {
       return
     }
 
-    // Update local state
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, is_read: true }))
-    )
-
+    // No need to update local state here, real-time subscription will handle it
     toast.success('All notifications marked as read')
   }
 
-  // *** INI PERBAIKANNYA ***
   const handleDelete = async (notificationId: string) => {
-    // Tambahkan dialog konfirmasi
     if (!window.confirm('Are you sure you want to delete this notification?')) {
-      return // Batal jika user menekan 'Cancel'
+      return
     }
 
     const { error } = await deleteNotification(notificationId)
@@ -95,20 +113,19 @@ export default function NotificationsPage() {
       return
     }
 
-    // Update local state
-    setNotifications(prev => prev.filter(notif => notif.id !== notificationId))
+    // No need to update local state here, real-time subscription will handle it
     toast.success('Notification deleted')
   }
 
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read if not already
     if (!notification.is_read) {
       handleMarkAsRead(notification.id)
     }
 
-    // Navigate to related page if applicable
-    if (notification.related_application_id) {
-      router.push('/my-applications')
+    if (notification.type === 'status_change' && notification.related_application_id && notification.related_status) {
+      router.push(`/dashboard/applications?status=${notification.related_status}`);
+    } else if (notification.related_job_id && notification.type !== 'status_change') {
+      // router.push(`/dashboard?jobId=${notification.related_job_id}`); // Example
     }
   }
 
@@ -143,8 +160,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6">
+    <div className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-6">
@@ -213,12 +229,10 @@ export default function NotificationsPage() {
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-4">
-                    {/* Icon */}
                     <div className="flex-shrink-0 mt-1">
                       {getNotificationIcon(notification.type)}
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4 mb-1">
                         <h3 className={cn(
@@ -237,9 +251,9 @@ export default function NotificationsPage() {
                       )}>
                         {notification.message}
                       </p>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-gray-400">
-                          {new Date(notification.created_at).toLocaleDateString('id-ID', {
+                          {new Date(notification.created_at).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -263,7 +277,7 @@ export default function NotificationsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDelete(notification.id) // onClick ini tidak perlu diubah
+                              handleDelete(notification.id)
                             }}
                             className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
                           >
@@ -278,8 +292,6 @@ export default function NotificationsPage() {
             </div>
           )}
         </div>
-      </div>
-      <Footer />
     </div>
   )
 }

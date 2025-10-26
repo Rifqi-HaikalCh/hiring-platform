@@ -3,17 +3,19 @@
 import { useState, Fragment, useEffect, useRef } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { useForm } from 'react-hook-form'
-import { X, Briefcase, DollarSign, Users, Sparkles, MapPin, Building2, Upload, Image as ImageIcon, Tag } from 'lucide-react'
+import { X, Briefcase, DollarSign, Users, Sparkles, MapPin, Building2, Upload, Image as ImageIcon, Tag, Edit3, Save } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { supabase } from '@/lib/supabase/client'
 import { gsap } from 'gsap'
+import { type Job, updateJob } from '@/lib/supabase/jobs'
 
-interface CreateJobModalProps {
+interface JobFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onJobCreated?: () => void
+  onJobSave?: (job: Job) => void
+  jobToEdit?: Job | null
 }
 
 interface JobFormData {
@@ -74,11 +76,11 @@ const profileFields = [
 ]
 
 const cleanSalaryString = (salaryStr: string): number => {
-  return parseInt(salaryStr.replace(/[^\d]/g, '')) || 0
+  return parseInt(String(salaryStr).replace(/[^\d]/g, '')) || 0
 }
 
-const formatCurrency = (value: string): string => {
-  const numbers = value.replace(/[^\d]/g, '')
+const formatCurrency = (value: string | number): string => {
+  const numbers = String(value).replace(/[^\d]/g, '')
   return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
@@ -137,7 +139,8 @@ function RequirementToggle({ value, onChange }: RequirementToggleProps) {
   )
 }
 
-export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModalProps) {
+export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormModalProps) {
+  const isEditing = !!jobToEdit;
   const [formConfig, setFormConfig] = useState<FormConfiguration>(defaultFormConfig)
   const [loading, setLoading] = useState(false)
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -173,21 +176,37 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
   const maxSalary = watch('max_salary')
 
   useEffect(() => {
-    if (isOpen && formRef.current) {
-      // Animate form sections on open
-      const sections = formRef.current.querySelectorAll('.form-section')
-      gsap.fromTo(sections,
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.5,
-          stagger: 0.1,
-          ease: 'power2.out'
-        }
-      )
+    if (isOpen) {
+      if (isEditing && jobToEdit) {
+        reset({
+          ...jobToEdit,
+          min_salary: formatCurrency(jobToEdit.min_salary || 0),
+          max_salary: formatCurrency(jobToEdit.max_salary || 0),
+          required_skills: (jobToEdit.required_skills || []).join(', ')
+        });
+        setLogoPreview(jobToEdit.company_logo_url || null);
+        setFormConfig(jobToEdit.form_configuration as FormConfiguration || defaultFormConfig);
+      } else {
+        reset();
+        setLogoPreview(null);
+        setFormConfig(defaultFormConfig);
+      }
+
+      if (formRef.current) {
+        const sections = formRef.current.querySelectorAll('.form-section')
+        gsap.fromTo(sections,
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.5,
+            stagger: 0.1,
+            ease: 'power2.out'
+          }
+        )
+      }
     }
-  }, [isOpen])
+  }, [isOpen, isEditing, jobToEdit, reset]);
 
   const handleSalaryChange = (field: 'min_salary' | 'max_salary', value: string) => {
     const formatted = formatCurrency(value)
@@ -216,7 +235,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
 
       setLogoFile(file)
 
-      // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setLogoPreview(reader.result as string)
@@ -244,19 +262,18 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         return
       }
 
-      // Upload logo if exists
-      let logoUrl: string | null = null
+      let logoUrl: string | null = jobToEdit?.company_logo_url || null;
       if (logoFile) {
         try {
           const fileExtension = logoFile.name.split('.').pop()
           const fileName = `${data.company_name.replace(/\s+/g, '-')}-${Date.now()}.${fileExtension}`
           const filePath = `public/${fileName}`
 
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('company_logos')
             .upload(filePath, logoFile, {
               cacheControl: '3600',
-              upsert: false
+              upsert: true // Use upsert to handle overwrites
             })
 
           if (uploadError) {
@@ -265,7 +282,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
             return
           }
 
-          // Get public URL
           const { data: { publicUrl } } = supabase.storage
             .from('company_logos')
             .getPublicUrl(filePath)
@@ -278,7 +294,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         }
       }
 
-      // Parse required skills
       const skillsArray = data.required_skills
         ? data.required_skills
             .split(',')
@@ -298,8 +313,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         candidates_needed: parseInt(data.candidates_needed.toString()) || 1,
         min_salary: cleanSalaryString(data.min_salary),
         max_salary: cleanSalaryString(data.max_salary),
-        created_by: user.id,
-        status: 'active',
         form_configuration: formConfig
       }
 
@@ -308,7 +321,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         return
       }
 
-      // Validate salary range
       if (jobData.min_salary > jobData.max_salary) {
         toast.error('Minimum salary cannot be greater than maximum salary')
         return
@@ -319,38 +331,43 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
         return
       }
 
-      const { error } = await supabase
-        .from('jobs')
-        .insert([jobData])
-        .select()
-        .single()
+      let savedJob: Job | null = null;
 
-      if (error) {
-        if (error.code === '42501') {
-          toast.error('Permission denied. Please check your admin privileges.')
-        } else {
-          toast.error(`Failed to create job: ${error.message}`)
+      if (isEditing) {
+        const { data: updatedData, error } = await updateJob(jobToEdit.id, jobData);
+        if (error) {
+          toast.error(`Failed to update job: ${error.message}`)
+          return
         }
-        return
+        savedJob = updatedData;
+        toast.success('Job updated successfully!')
+      } else {
+        const { data: insertedData, error } = await supabase
+          .from('jobs')
+          .insert([{ ...jobData, created_by: user.id, status: 'active' }])
+          .select()
+          .single()
+
+        if (error) {
+          if (error.code === '42501') {
+            toast.error('Permission denied. Please check your admin privileges.')
+          } else {
+            toast.error(`Failed to create job: ${error.message}`)
+          }
+          return
+        }
+        savedJob = insertedData;
+        toast.success('Job published successfully!')
       }
 
-      toast.success('Job published successfully!')
-
-      reset()
-      setFormConfig(defaultFormConfig)
-      setLogoFile(null)
-      setLogoPreview(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+      if (onJobSave && savedJob) {
+        onJobSave(savedJob)
       }
-      onClose()
 
-      if (onJobCreated) {
-        onJobCreated()
-      }
+      handleClose();
 
     } catch (error) {
-      console.error('Unexpected error during job creation:', error)
+      console.error('Unexpected error during job save:', error)
       toast.error('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -397,18 +414,17 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
               leaveTo="opacity-0 scale-90 rotate-3"
             >
               <Dialog.Panel className="w-full max-w-2xl max-h-[90vh] transform rounded-3xl bg-white/70 backdrop-blur-xl text-left align-middle shadow-2xl shadow-black/10 transition-all overflow-hidden flex flex-col border border-white/20">
-                {/* Header with gradient */}
                 <div className="relative flex items-center justify-between p-4 sm:p-6 bg-gradient-to-r from-teal-600 via-teal-500 to-cyan-600 text-white flex-shrink-0 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
                   <div className="relative flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                      <Briefcase className="h-6 w-6" />
+                      {isEditing ? <Edit3 className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
                     </div>
                     <div>
                       <Dialog.Title className="text-xl font-bold">
-                        Create Job Opening
+                        {isEditing ? 'Edit Job' : 'Create Job Opening'}
                       </Dialog.Title>
-                      <p className="text-teal-100 text-sm">Fill in the details below</p>
+                      <p className="text-teal-100 text-sm">{isEditing ? 'Update the details below' : 'Fill in the details below'}</p>
                     </div>
                   </div>
                   <button
@@ -421,10 +437,8 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                   </button>
                 </div>
 
-                {/* Scrollable Content */}
                 <div ref={formRef} className="flex-1 overflow-y-auto custom-scrollbar">
                   <form id="job-form" onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-                    {/* Section 1: Job Details */}
                     <div className="form-section space-y-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
@@ -624,7 +638,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                       </div>
                     </div>
 
-                    {/* Section 2: Salary */}
                     <div className="form-section space-y-4 p-4 sm:p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl shadow-lg border border-teal-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
@@ -676,7 +689,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                       </div>
                     </div>
 
-                    {/* Section 3: Profile Requirements */}
                     <div className="form-section space-y-4 p-4 sm:p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
@@ -706,7 +718,6 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                   </form>
                 </div>
 
-                {/* Footer */}
                 <div className="border-t border-gray-200 p-4 sm:p-6 flex-shrink-0 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex justify-end gap-3">
                     <Button
@@ -727,12 +738,12 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
                       {loading ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Publishing...
+                          {isEditing ? 'Updating...' : 'Publishing...'}
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Publish Job
+                          {isEditing ? <Save className="h-4 w-4 mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                          {isEditing ? 'Update Job' : 'Publish Job'}
                         </>
                       )}
                     </Button>
@@ -743,22 +754,7 @@ export function CreateJobModal({ isOpen, onClose, onJobCreated }: CreateJobModal
           </div>
         </div>
 
-        <style jsx>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: linear-gradient(to bottom, #14b8a6, #06b6d4);
-            border-radius: 10px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(to bottom, #0d9488, #0891b2);
-          }
-        `}</style>
+
       </Dialog>
     </Transition>
   )

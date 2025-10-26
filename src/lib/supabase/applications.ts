@@ -1,4 +1,5 @@
 import { supabase } from './client'
+import { notifyApplicationStatusChange } from './notifications';
 
 export interface Application {
   id: string
@@ -57,55 +58,48 @@ export async function updateApplicationStatus(
   status: 'pending' | 'accepted' | 'rejected'
 ) {
   try {
-    // Get application data with job info before updating
-    const { data: application, error: fetchError } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        jobs!inner (
-          id,
-          job_title
-        )
-      `)
-      .eq('id', applicationId)
-      .single()
-
-    if (fetchError) {
-      throw fetchError
-    }
-
-// Update status
-    const { data, error } = await supabase
+    // First, update the status
+    const { data: updatedApplication, error: updateError } = await supabase
       .from('applications')
       .update({ status })
       .eq('id', applicationId)
-      .select()
+      .select('*, jobs (id, job_title, company_name)')
       .single();
 
-    if (error) {
-      throw error;
+    if (updateError) {
+      console.error('Update application status error:', updateError);
+      throw updateError;
     }
 
-    // ---> Kirim notifikasi ke kandidat <---
-    if (application && application.applicant_id && application.jobs) {
-      const { notifyApplicationStatusChange } = await import('./notifications'); // Impor fungsi notifikasi
-      await notifyApplicationStatusChange(
-        application.applicant_id,
-        applicationId,
-        application.job_id,
-        application.jobs.job_title,
-        status
-      );
+    if (!updatedApplication) {
+      throw new Error('Application not found after update.');
     }
-    // ------------------------------------
 
-    return { data: data as Application, error: null };
+    // Then, send the notification using the data from the update response
+    const jobInfo = updatedApplication.jobs;
+    if (jobInfo && updatedApplication.applicant_id) {
+      try {
+        await notifyApplicationStatusChange(
+          updatedApplication.applicant_id,
+          applicationId,
+          updatedApplication.job_id,
+          jobInfo.job_title,
+          jobInfo.company_name || 'a company',
+          status
+        );
+      } catch (notificationError) {
+        console.error('Error sending application status change notification:', notificationError);
+        // Decide whether to re-throw or just log the notification error
+        // For now, we'll just log it so the status update itself still succeeds.
+      }
+    }
+
+    return { data: updatedApplication as Application, error: null };
   } catch (error) {
-    console.error('Update application status error:', error);
+    console.error('General error in updateApplicationStatus:', error);
     return { data: null, error };
   }
 }
-
 export async function deleteApplication(applicationId: string) {
   try {
     const { error } = await supabase
