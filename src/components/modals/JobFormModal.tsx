@@ -176,22 +176,28 @@ export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormM
   const minSalary = watch('min_salary')
   const maxSalary = watch('max_salary')
 
-  useEffect(() => {
-    if (isOpen) {
-      if (isEditing && jobToEdit) {
-        reset({
-          ...jobToEdit,
-          min_salary: formatCurrency(jobToEdit.min_salary || 0),
-          max_salary: formatCurrency(jobToEdit.max_salary || 0),
-          required_skills: (jobToEdit.required_skills || []).join(', ')
-        });
-        setLogoPreview(jobToEdit.company_logo_url || null);
-        setFormConfig(jobToEdit.form_configuration as FormConfiguration || defaultFormConfig);
-      } else {
-        reset();
-        setLogoPreview(null);
-        setFormConfig(defaultFormConfig);
-      }
+useEffect(() => {
+        if (isOpen) {
+            if (isEditing && jobToEdit) {
+                reset({
+                    ...jobToEdit,
+                    // Pastikan company_logo_url adalah string, default ke string kosong jika null/undefined
+                    company_logo_url: jobToEdit.company_logo_url ?? '', // <--- TAMBAHKAN INI
+                    min_salary: formatCurrency(jobToEdit.min_salary || 0),
+                    max_salary: formatCurrency(jobToEdit.max_salary || 0),
+                    required_skills: (jobToEdit.required_skills || []).join(', ')
+                });
+                setLogoPreview(jobToEdit.company_logo_url || null);
+                setFormConfig(jobToEdit.form_configuration as FormConfiguration || defaultFormConfig);
+            } else {
+                reset({
+                   // Pastikan juga di sini jika ada default value yang bisa null
+                   company_logo_url: '', // Atau default value lain yang sesuai
+                   // Reset field lain jika perlu
+                });
+                setLogoPreview(null);
+                setFormConfig(defaultFormConfig);
+            }
 
       if (formRef.current) {
         const sections = formRef.current.querySelectorAll('.form-section')
@@ -308,8 +314,8 @@ export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormM
         job_description: data.job_description?.trim(),
         company_name: data.company_name?.trim(),
         location: data.location?.trim(),
-        department: data.department?.trim() || null,
-        company_logo_url: logoUrl,
+        department: data.department?.trim() || undefined,
+        company_logo_url: logoUrl ?? undefined,
         required_skills: skillsArray,
         candidates_needed: parseInt(data.candidates_needed.toString()) || 1,
         min_salary: cleanSalaryString(data.min_salary),
