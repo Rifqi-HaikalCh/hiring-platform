@@ -17,6 +17,7 @@ export interface Job {
   company_logo_url?: string
   location?: string
   department?: string
+  required_skills?: string[]
   // Legacy fields for compatibility
   title?: string
   company?: string

@@ -80,8 +80,9 @@ const cleanSalaryString = (salaryStr: string): number => {
 }
 
 const formatCurrency = (value: string | number): string => {
-  const numbers = String(value).replace(/[^\d]/g, '')
-  return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const numbers = String(value).replace(/[^\d]/g, '');
+  if (!numbers) return '';
+  return 'Rp ' + new Intl.NumberFormat('id-ID').format(parseInt(numbers));
 }
 
 interface RequirementToggleProps {
@@ -209,9 +210,9 @@ export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormM
   }, [isOpen, isEditing, jobToEdit, reset]);
 
   const handleSalaryChange = (field: 'min_salary' | 'max_salary', value: string) => {
-    const formatted = formatCurrency(value)
-    setValue(field, formatted, { shouldValidate: true })
-  }
+    const numbers = value.replace(/[^\d]/g, '');
+    setValue(field, formatCurrency(numbers), { shouldValidate: true });
+  };
 
   const handleRequirementChange = (field: keyof FormConfiguration, value: RequirementState) => {
     setFormConfig(prev => ({
@@ -654,16 +655,13 @@ export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormM
                             Minimum Salary
                           </label>
                           <div className="relative">
-                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                              Rp
-                            </span>
                             <input
                               id="min_salary"
                               type="text"
                               value={minSalary}
                               onChange={(e) => handleSalaryChange('min_salary', e.target.value)}
-                              placeholder="5.000.000"
-                              className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
+                              placeholder="Rp 5.000.000"
+                              className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-4 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
                             />
                           </div>
                         </div>
@@ -673,16 +671,13 @@ export function JobFormModal({ isOpen, onClose, onJobSave, jobToEdit }: JobFormM
                             Maximum Salary
                           </label>
                           <div className="relative">
-                            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                              Rp
-                            </span>
                             <input
                               id="max_salary"
                               type="text"
                               value={maxSalary}
                               onChange={(e) => handleSalaryChange('max_salary', e.target.value)}
-                              placeholder="8.000.000"
-                              className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
+                              placeholder="Rp 8.000.000"
+                              className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-4 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
                             />
                           </div>
                         </div>
