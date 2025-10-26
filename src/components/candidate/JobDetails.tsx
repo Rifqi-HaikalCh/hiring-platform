@@ -17,7 +17,7 @@ interface Job {
   }
   type: string
   description: string[]
-  companyLogo?: string
+  companyLogo?: string | null;
 }
 
 interface JobDetailsProps {
