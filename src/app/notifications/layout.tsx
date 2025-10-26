@@ -14,7 +14,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { LogoutConfirmModal } from '@/components/modals/LogoutConfirmModal'
 import { NotificationBadge } from '@/components/ui/NotificationBadge';
 import { supabase } from '@/lib/supabase/client';
-import { getUnreadNotificationsCount } from '@/lib/supabase/notifications';
+import { getUnreadNotificationsCount, type Notification } from '@/lib/supabase/notifications';
 
 
 const navigation = [
