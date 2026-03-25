@@ -191,9 +191,17 @@ useEffect(() => {
                 setFormConfig(jobToEdit.form_configuration as FormConfiguration || defaultFormConfig);
             } else {
                 reset({
-                   // Pastikan juga di sini jika ada default value yang bisa null
-                   company_logo_url: '', // Atau default value lain yang sesuai
-                   // Reset field lain jika perlu
+                   job_title: '',
+                   job_type: 'Full-time',
+                   job_description: '',
+                   company_name: '',
+                   company_logo_url: '',
+                   location: '',
+                   department: '',
+                   required_skills: '',
+                   candidates_needed: 1,
+                   min_salary: '',
+                   max_salary: ''
                 });
                 setLogoPreview(null);
                 setFormConfig(defaultFormConfig);
@@ -664,7 +672,7 @@ useEffect(() => {
                             <input
                               id="min_salary"
                               type="text"
-                              value={minSalary}
+                              value={minSalary || ''}
                               onChange={(e) => handleSalaryChange('min_salary', e.target.value)}
                               placeholder="Rp 5.000.000"
                               className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-4 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
@@ -680,7 +688,7 @@ useEffect(() => {
                             <input
                               id="max_salary"
                               type="text"
-                              value={maxSalary}
+                              value={maxSalary || ''}
                               onChange={(e) => handleSalaryChange('max_salary', e.target.value)}
                               placeholder="Rp 8.000.000"
                               className="flex h-11 w-full rounded-xl border border-gray-300 bg-white pl-4 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300 group-hover:border-teal-400 focus:scale-[1.02]"
