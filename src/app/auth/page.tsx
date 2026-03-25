@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useAuth } from '@/contexts/AuthContext'
+import { TestAccountsModal } from '@/components/modals/TestAccountsModal'
 import {
   handleSignIn,
   handleSignUp,
@@ -50,8 +51,18 @@ export default function AuthPage() {
   const [view, setView] = useState<AuthView>('login-password')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showTestModal, setShowTestModal] = useState(false)
   const router = useRouter()
   const { setShowSplashScreen, setSplashRedirectTo } = useAuth()
+
+  useEffect(() => {
+    // Tampilkan modal akun uji coba saat halaman dimuat
+    const hasSeenModal = sessionStorage.getItem('hasSeenTestModal')
+    if (!hasSeenModal) {
+      setShowTestModal(true)
+      sessionStorage.setItem('hasSeenTestModal', 'true')
+    }
+  }, [])
 
   const loginForm = useForm<LoginFormData>()
   const registerForm = useForm<RegisterFormData>()
@@ -185,6 +196,22 @@ const onGoogleSignIn = async () => {
 
   return (
     <div className="min-h-screen relative z-10 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Tombol bantuan Akun Uji Coba */}
+      <div className="absolute top-4 right-4 sm:top-8 sm:right-8">
+        <button
+          onClick={() => setShowTestModal(true)}
+          className="group flex items-center gap-2 bg-white/80 hover:bg-teal-600 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-sm border border-teal-100 transition-all duration-300 hover:shadow-teal-200/50 hover:-translate-y-0.5"
+          title="Lihat Akun Uji Coba"
+        >
+          <div className="p-1.5 bg-teal-50 rounded-lg group-hover:bg-white/20 transition-colors">
+            <Key className="h-4 w-4 text-teal-600 group-hover:text-white" />
+          </div>
+          <span className="text-sm font-semibold text-gray-700 group-hover:text-white">
+            Akun Uji Coba
+          </span>
+        </button>
+      </div>
+
       <div className="max-w-md w-full space-y-6">
         {/* Logo/Brand */}
         <div className="text-center">
@@ -672,6 +699,11 @@ const onGoogleSignIn = async () => {
           )}
         </Card>
       </div>
+
+      <TestAccountsModal
+        isOpen={showTestModal}
+        onClose={() => setShowTestModal(false)}
+      />
     </div>
   )
 }
