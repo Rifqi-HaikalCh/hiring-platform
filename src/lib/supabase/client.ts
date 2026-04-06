@@ -15,6 +15,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'implicit'
+  },
+  global: {
+    fetch: (...args) => {
+      // Custom fetch with better error handling for CORS
+      return fetch(...args).catch((error) => {
+        console.error('Fetch error:', error)
+        throw error
+      })
+    }
   }
 })
